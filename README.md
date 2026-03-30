@@ -114,7 +114,7 @@ This could mean:
 
 ### How to Report Issues
 
-Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/snutsjs/snuts-js).
+Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/Jhonatanmizu/snuts-js-extension-vscode).
 
 ## About @snutsjs/core
 
