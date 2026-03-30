@@ -1,5 +1,5 @@
-import { logAnalysisError } from '../utils/outputChannel';
-import { type TestSmell } from './types';
+import { logAnalysisError } from '../utils/outputChannel.js';
+import { type TestSmell } from './types.js';
 
 type DetectorConstructor = new () => unknown;
 type DetectorRunnerLike = {
@@ -7,8 +7,19 @@ type DetectorRunnerLike = {
 };
 type SnutsCoreModule = {
 	DetectorRunner: new (detectors: unknown[]) => DetectorRunnerLike;
-	detectors: Record<string, DetectorConstructor>;
+	AnonymousTestLogicDetector: DetectorConstructor;
+	CommentsOnlyLogicTestDetector: DetectorConstructor;
+	ComplexSnapshotTestLogicDetector: DetectorConstructor;
+	ConditionalTestLogicDetector: DetectorConstructor;
+	DetectorTestWithoutDescriptionLogic: DetectorConstructor;
+	GeneralFixtureTestLogicDetector: DetectorConstructor;
+	IdenticalDescriptionTestLogicDetector: DetectorConstructor;
+	OvercommentedTestLogicDetector: DetectorConstructor;
 };
+
+function isDetectorConstructor(value: unknown): value is DetectorConstructor {
+	return typeof value === 'function';
+}
 
 export class TestSmellAnalyzer {
 	private runnerPromise: Promise<DetectorRunnerLike> | undefined;
@@ -53,7 +64,26 @@ export class TestSmellAnalyzer {
 
 	private async createRunner(): Promise<DetectorRunnerLike> {
 		const snutsCore = (await import('@snutsjs/core')) as unknown as SnutsCoreModule;
-		const detectorInstances = Object.values(snutsCore.detectors).map((DetectorClass) => new DetectorClass());
+		const detectorEntries = [
+			['AnonymousTestLogicDetector', snutsCore.AnonymousTestLogicDetector],
+			['CommentsOnlyLogicTestDetector', snutsCore.CommentsOnlyLogicTestDetector],
+			['ComplexSnapshotTestLogicDetector', snutsCore.ComplexSnapshotTestLogicDetector],
+			['ConditionalTestLogicDetector', snutsCore.ConditionalTestLogicDetector],
+			['DetectorTestWithoutDescriptionLogic', snutsCore.DetectorTestWithoutDescriptionLogic],
+			['GeneralFixtureTestLogicDetector', snutsCore.GeneralFixtureTestLogicDetector],
+			['IdenticalDescriptionTestLogicDetector', snutsCore.IdenticalDescriptionTestLogicDetector],
+			['OvercommentedTestLogicDetector', snutsCore.OvercommentedTestLogicDetector],
+		] as const;
+
+		const invalidDetectorNames = detectorEntries
+			.filter(([, DetectorClass]) => !isDetectorConstructor(DetectorClass))
+			.map(([name]) => name);
+
+		if (invalidDetectorNames.length > 0) {
+			throw new Error(`Invalid detector exports from @snutsjs/core: ${invalidDetectorNames.join(', ')}`);
+		}
+
+		const detectorInstances = detectorEntries.map(([, DetectorClass]) => new DetectorClass());
 
 		return new snutsCore.DetectorRunner(detectorInstances);
 	}

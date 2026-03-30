@@ -1,11 +1,11 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { mapSmellsToDiagnostics } from '../analyzer/smellToDiagnosticMapper';
-import { TestSmellAnalyzer } from '../analyzer/testSmellAnalyzer';
-import { type TestSmell } from '../analyzer/types';
-import { DiagnosticsController } from '../providers/diagnosticsController';
-import { isTestFile } from '../utils/testFileMatcher';
+import { mapSmellsToDiagnostics } from '../analyzer/smellToDiagnosticMapper.js';
+import { TestSmellAnalyzer } from '../analyzer/testSmellAnalyzer.js';
+import { type TestSmell } from '../analyzer/types.js';
+import { DiagnosticsController } from '../providers/diagnosticsController.js';
+import { isTestFile } from '../utils/testFileMatcher.js';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
@@ -65,8 +65,8 @@ suite('Extension Test Suite', () => {
 
 		assert.ok(smells.length > 0, 'Expected the real analyzer to detect at least one smell.');
 		assert.ok(
-			smells.some((smell) => smell.message.includes('Anonymous test case')),
-			`Unexpected smell messages: ${smells.map((smell) => smell.message).join(', ')}`,
+			smells.some((smell: TestSmell) => smell.message.includes('Anonymous test case')),
+			`Unexpected smell messages: ${smells.map((smell: TestSmell) => smell.message).join(', ')}`,
 		);
 	});
 

@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
-import { mapSmellsToDiagnostics } from "../analyzer/smellToDiagnosticMapper";
-import { TestSmellAnalyzer } from "../analyzer/testSmellAnalyzer";
-import { getExtensionConfig, toDiagnosticSeverity } from "../config/extensionConfig";
-import { isTestFile } from "../utils/testFileMatcher";
+import { mapSmellsToDiagnostics } from "../analyzer/smellToDiagnosticMapper.js";
+import { TestSmellAnalyzer } from "../analyzer/testSmellAnalyzer.js";
+import { getExtensionConfig, toDiagnosticSeverity } from "../config/extensionConfig.js";
+import { isTestFile } from "../utils/testFileMatcher.js";
 
 type AnalyzerLike = Pick<TestSmellAnalyzer, "analyze" | "consumeLastError">;
 

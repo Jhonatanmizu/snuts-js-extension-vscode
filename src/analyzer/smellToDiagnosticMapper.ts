@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { type TestSmell } from "./types";
+import { type TestSmell } from "./types.js";
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, value));

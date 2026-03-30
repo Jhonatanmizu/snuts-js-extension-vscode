@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { TestSmellAnalyzer } from './analyzer/testSmellAnalyzer';
-import { DiagnosticsController } from './providers/diagnosticsController';
-import { getOutputChannel } from './utils/outputChannel';
+import { TestSmellAnalyzer } from './analyzer/testSmellAnalyzer.js';
+import { DiagnosticsController } from './providers/diagnosticsController.js';
+import { getOutputChannel } from './utils/outputChannel.js';
 
 export function activate(context: vscode.ExtensionContext) {
 	const analyzer = new TestSmellAnalyzer();

@@ -6,6 +6,7 @@
   "publisher": "Jhonatanmizu",
   "license": "GPL-3.0",
   "icon": "images/logo.png",
+  "type": "module",
   "keywords": [
     "tests",
     "test-smells",
