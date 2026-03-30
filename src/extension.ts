@@ -1,16 +1,29 @@
 import * as vscode from "vscode";
 import { TestSmellAnalyzer } from "./analyzer/testSmellAnalyzer.js";
 import { DiagnosticsController } from "./providers/diagnosticsController.js";
+import { createOutputChannelLogger } from "./utils/coreLogger.js";
 import { getOutputChannel } from "./utils/outputChannel.js";
 
 export function activate(context: vscode.ExtensionContext) {
+  // ── OutputChannel + core logger must come first ───────────────────────────
+  // @snutsjs/core ships a plain pino instance as its default logger. Pino
+  // writes JSON to process.stdout the moment any log method is called. On a
+  // stdio LSP transport that would corrupt the protocol before the first
+  // response is sent.
+  //
+  // createOutputChannelLogger() builds an ILogger that forwards every library
+  // log line to the VS Code OutputChannel instead. TestSmellAnalyzer calls
+  // setLogger() with this instance as the absolute first operation after
+  // importing @snutsjs/core, so pino never gets a chance to write.
   const outputChannel = getOutputChannel();
+  const coreLogger = createOutputChannelLogger(outputChannel);
+
   outputChannel.appendLine(
     `[${new Date().toISOString()}] Activating SNUTS.js extension...`,
   );
 
   try {
-    const analyzer = new TestSmellAnalyzer();
+    const analyzer = new TestSmellAnalyzer(undefined, coreLogger);
     const diagnosticsController = new DiagnosticsController(analyzer);
 
     context.subscriptions.push(diagnosticsController);
@@ -65,6 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
             editor.document,
             true,
           );
+
           if (result.error) {
             outputChannel.appendLine(
               `[${new Date().toISOString()}] Manual analysis failed for ${targetPath}`,
@@ -95,6 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
           outputChannel.appendLine(
             `[${new Date().toISOString()}] Manual analysis completed for ${targetPath}: ${result.diagnosticsCount} smell(s) found`,
           );
+
           for (const smell of result.smells ?? []) {
             const category = smell.description ? `[${smell.description}] ` : "";
             outputChannel.appendLine(
@@ -106,6 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
               );
             }
           }
+
           vscode.window.showWarningMessage(
             `SNUTS.js found ${result.diagnosticsCount} potential test smell(s).`,
           );
