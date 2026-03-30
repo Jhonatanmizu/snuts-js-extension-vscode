@@ -4,12 +4,19 @@ import { TestSmellAnalyzer } from "../analyzer/testSmellAnalyzer";
 import { getExtensionConfig, toDiagnosticSeverity } from "../config/extensionConfig";
 import { isTestFile } from "../utils/testFileMatcher";
 
+type AnalyzerLike = Pick<TestSmellAnalyzer, "analyze" | "consumeLastError">;
+
+export interface AnalysisRunResult {
+	diagnosticsCount: number;
+	error?: Error;
+}
+
 export class DiagnosticsController implements vscode.Disposable {
 	private readonly diagnostics = vscode.languages.createDiagnosticCollection("snuts-js");
 	private readonly pendingRuns = new Map<string, NodeJS.Timeout>();
 	private readonly runVersions = new Map<string, number>();
 
-	constructor(private readonly analyzer: TestSmellAnalyzer) {}
+	constructor(private readonly analyzer: AnalyzerLike) {}
 
 	public handleDocumentOpen(document: vscode.TextDocument): void {
 		this.scheduleAnalysis(document);
@@ -27,14 +34,23 @@ export class DiagnosticsController implements vscode.Disposable {
 		this.clear(document.uri);
 	}
 
-	public async analyzeNow(document: vscode.TextDocument): Promise<number> {
+	public async analyzeNow(document: vscode.TextDocument, force = false): Promise<AnalysisRunResult> {
 		const config = getExtensionConfig();
-		if (!this.isAnalyzable(document, config)) {
+		if (!this.isAnalyzable(document, config, force)) {
 			this.clear(document.uri);
-			return 0;
+			return { diagnosticsCount: 0 };
 		}
 
 		const smells = await this.analyzer.analyze(document.uri.fsPath);
+		const error = this.analyzer.consumeLastError();
+		if (error) {
+			this.diagnostics.set(document.uri, []);
+			return {
+				diagnosticsCount: 0,
+				error,
+			};
+		}
+
 		const diagnostics = mapSmellsToDiagnostics(
 			smells,
 			document,
@@ -42,7 +58,7 @@ export class DiagnosticsController implements vscode.Disposable {
 		);
 
 		this.diagnostics.set(document.uri, diagnostics);
-		return diagnostics.length;
+		return { diagnosticsCount: diagnostics.length };
 	}
 
 	public dispose(): void {
@@ -57,7 +73,7 @@ export class DiagnosticsController implements vscode.Disposable {
 
 	private scheduleAnalysis(document: vscode.TextDocument): void {
 		const config = getExtensionConfig();
-		if (!this.isAnalyzable(document, config)) {
+		if (!this.isAnalyzable(document, config, false)) {
 			this.clear(document.uri);
 			return;
 		}
@@ -93,13 +109,13 @@ export class DiagnosticsController implements vscode.Disposable {
 			return;
 		}
 
-		const diagnosticsCount = await this.analyzeNow(document);
+		const result = await this.analyzeNow(document);
 		const activeVersion = this.runVersions.get(key);
 		if (activeVersion !== version) {
 			return;
 		}
 
-		if (diagnosticsCount === 0) {
+		if (result.diagnosticsCount === 0) {
 			this.diagnostics.set(uri, []);
 		}
 	}
@@ -119,6 +135,7 @@ export class DiagnosticsController implements vscode.Disposable {
 	private isAnalyzable(
 		document: vscode.TextDocument,
 		config: ReturnType<typeof getExtensionConfig>,
+		force: boolean,
 	): boolean {
 		if (!config.enabled) {
 			return false;
@@ -126,6 +143,10 @@ export class DiagnosticsController implements vscode.Disposable {
 
 		if (document.isUntitled || document.uri.scheme !== "file") {
 			return false;
+		}
+
+		if (force) {
+			return true;
 		}
 
 		return isTestFile(document.uri, config.includePatterns);

@@ -14,8 +14,16 @@ const DEFAULT_DEBOUNCE_MS = 300;
 const DEFAULT_INCLUDE_PATTERNS = [
 	"**/*.test.ts",
 	"**/*.spec.ts",
+	"**/*.test.tsx",
+	"**/*.spec.tsx",
 	"**/*.test.js",
 	"**/*.spec.js",
+	"**/*.test.jsx",
+	"**/*.spec.jsx",
+	"**/__tests__/**/*.ts",
+	"**/__tests__/**/*.tsx",
+	"**/__tests__/**/*.js",
+	"**/__tests__/**/*.jsx",
 ];
 
 function normalizePatterns(patterns: string[] | undefined): string[] {

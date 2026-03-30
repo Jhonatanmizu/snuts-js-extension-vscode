@@ -26,8 +26,16 @@ Default patterns:
 
 - `**/*.test.ts`
 - `**/*.spec.ts`
+- `**/*.test.tsx`
+- `**/*.spec.tsx`
 - `**/*.test.js`
 - `**/*.spec.js`
+- `**/*.test.jsx`
+- `**/*.spec.jsx`
+- `**/__tests__/**/*.ts`
+- `**/__tests__/**/*.tsx`
+- `**/__tests__/**/*.js`
+- `**/__tests__/**/*.jsx`
 
 ## Requirements
 

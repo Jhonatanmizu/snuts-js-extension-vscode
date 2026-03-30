@@ -12,6 +12,13 @@ function globToRegExp(globPattern: string): RegExp {
 	while (index < normalized.length) {
 		const char = normalized[index];
 		const nextChar = normalized[index + 1];
+		const thirdChar = normalized[index + 2];
+
+		if (char === "*" && nextChar === "*" && thirdChar === "/") {
+			regex += "(?:.*/)?";
+			index += 3;
+			continue;
+		}
 
 		if (char === "*" && nextChar === "*") {
 			regex += ".*";
