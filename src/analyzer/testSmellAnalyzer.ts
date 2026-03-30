@@ -82,17 +82,24 @@ export class TestSmellAnalyzer {
 
 	private async createRunner(): Promise<DetectorRunnerLike> {
 		const snutsCore = (await import('@snutsjs/core')) as unknown as SnutsCoreModule;
-		const mergedModule = {
-			...toRecord(snutsCore.default),
-			...toRecord(snutsCore),
-		};
+		const moduleRecord = toRecord(snutsCore);
+		const defaultRecord = toRecord(snutsCore.default);
+		const nestedDefaultRecord = toRecord(defaultRecord.default);
 
-		const detectorRunnerCtor = mergedModule.DetectorRunner;
+		const detectorRunnerCtor = [
+			moduleRecord.DetectorRunner,
+			defaultRecord.DetectorRunner,
+			nestedDefaultRecord.DetectorRunner,
+		].find(isDetectorRunnerConstructor);
 		if (!isDetectorRunnerConstructor(detectorRunnerCtor)) {
 			throw new Error('Invalid DetectorRunner export from @snutsjs/core.');
 		}
 
-		const registry = toRecord(mergedModule.detectors);
+		const registry = toRecord(
+			moduleRecord.detectors
+				?? defaultRecord.detectors
+				?? nestedDefaultRecord.detectors,
+		);
 		const registryDetectorCtors = Object.values(registry).reduce<DetectorConstructor[]>((accumulator, value) => {
 			if (isDetectorConstructor(value)) {
 				accumulator.push(value);
@@ -104,14 +111,14 @@ export class TestSmellAnalyzer {
 		const detectorConstructors: DetectorConstructor[] = registryDetectorCtors.length > 0
 			? registryDetectorCtors
 			: [
-				mergedModule.AnonymousTestLogicDetector,
-				mergedModule.CommentsOnlyLogicTestDetector,
-				mergedModule.ComplexSnapshotTestLogicDetector,
-				mergedModule.ConditionalTestLogicDetector,
-				mergedModule.DetectorTestWithoutDescriptionLogic,
-				mergedModule.GeneralFixtureTestLogicDetector,
-				mergedModule.IdenticalDescriptionTestLogicDetector,
-				mergedModule.OvercommentedTestLogicDetector,
+				moduleRecord.AnonymousTestLogicDetector ?? defaultRecord.AnonymousTestLogicDetector ?? nestedDefaultRecord.AnonymousTestLogicDetector,
+				moduleRecord.CommentsOnlyLogicTestDetector ?? defaultRecord.CommentsOnlyLogicTestDetector ?? nestedDefaultRecord.CommentsOnlyLogicTestDetector,
+				moduleRecord.ComplexSnapshotTestLogicDetector ?? defaultRecord.ComplexSnapshotTestLogicDetector ?? nestedDefaultRecord.ComplexSnapshotTestLogicDetector,
+				moduleRecord.ConditionalTestLogicDetector ?? defaultRecord.ConditionalTestLogicDetector ?? nestedDefaultRecord.ConditionalTestLogicDetector,
+				moduleRecord.DetectorTestWithoutDescriptionLogic ?? defaultRecord.DetectorTestWithoutDescriptionLogic ?? nestedDefaultRecord.DetectorTestWithoutDescriptionLogic,
+				moduleRecord.GeneralFixtureTestLogicDetector ?? defaultRecord.GeneralFixtureTestLogicDetector ?? nestedDefaultRecord.GeneralFixtureTestLogicDetector,
+				moduleRecord.IdenticalDescriptionTestLogicDetector ?? defaultRecord.IdenticalDescriptionTestLogicDetector ?? nestedDefaultRecord.IdenticalDescriptionTestLogicDetector,
+				moduleRecord.OvercommentedTestLogicDetector ?? defaultRecord.OvercommentedTestLogicDetector ?? nestedDefaultRecord.OvercommentedTestLogicDetector,
 			].filter(isDetectorConstructor);
 
 		if (detectorConstructors.length === 0) {

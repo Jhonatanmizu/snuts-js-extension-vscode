@@ -76,6 +76,11 @@ export function activate(context: vscode.ExtensionContext) {
 				outputChannel.appendLine(
 					`[${new Date().toISOString()}] Manual analysis completed for ${targetPath}: ${result.diagnosticsCount} smell(s) found`,
 				);
+				for (const smell of result.smells ?? []) {
+					outputChannel.appendLine(
+						`[${new Date().toISOString()}]   - ${smell.start.line}:${smell.start.column}-${smell.end.line}:${smell.end.column} ${smell.message}`,
+					);
+				}
 				vscode.window.showWarningMessage(`SNUTS.js found ${result.diagnosticsCount} potential test smell(s).`);
 			} catch (error) {
 				const normalizedError = error instanceof Error ? error : new Error(String(error));

@@ -1,13 +1,16 @@
 import * as vscode from "vscode";
 import { mapSmellsToDiagnostics } from "../analyzer/smellToDiagnosticMapper.js";
 import { TestSmellAnalyzer } from "../analyzer/testSmellAnalyzer.js";
+import type { TestSmell } from "../analyzer/types.js";
 import { getExtensionConfig, toDiagnosticSeverity } from "../config/extensionConfig.js";
+import { getOutputChannel } from "../utils/outputChannel.js";
 import { isTestFile } from "../utils/testFileMatcher.js";
 
 type AnalyzerLike = Pick<TestSmellAnalyzer, "analyze" | "consumeLastError">;
 
 export interface AnalysisRunResult {
 	diagnosticsCount: number;
+	smells?: readonly TestSmell[];
 	error?: Error;
 }
 
@@ -15,19 +18,32 @@ export class DiagnosticsController implements vscode.Disposable {
 	private readonly diagnostics = vscode.languages.createDiagnosticCollection("snuts-js");
 	private readonly pendingRuns = new Map<string, NodeJS.Timeout>();
 	private readonly runVersions = new Map<string, number>();
+	private readonly outputChannel = getOutputChannel();
 
 	constructor(private readonly analyzer: AnalyzerLike) {}
 
 	public handleDocumentOpen(document: vscode.TextDocument): void {
-		this.scheduleAnalysis(document);
+		if (!this.shouldObserveDocument(document)) {
+			return;
+		}
+
+		this.scheduleAnalysis(document, "open");
 	}
 
 	public handleDocumentChange(event: vscode.TextDocumentChangeEvent): void {
-		this.scheduleAnalysis(event.document);
+		if (!this.shouldObserveDocument(event.document)) {
+			return;
+		}
+
+		this.scheduleAnalysis(event.document, "change");
 	}
 
 	public handleDocumentSave(document: vscode.TextDocument): void {
-		this.scheduleAnalysis(document);
+		if (!this.shouldObserveDocument(document)) {
+			return;
+		}
+
+		this.scheduleAnalysis(document, "save");
 	}
 
 	public handleDocumentClose(document: vscode.TextDocument): void {
@@ -47,6 +63,7 @@ export class DiagnosticsController implements vscode.Disposable {
 			this.diagnostics.set(document.uri, []);
 			return {
 				diagnosticsCount: 0,
+				smells,
 				error,
 			};
 		}
@@ -58,7 +75,7 @@ export class DiagnosticsController implements vscode.Disposable {
 		);
 
 		this.diagnostics.set(document.uri, diagnostics);
-		return { diagnosticsCount: diagnostics.length };
+		return { diagnosticsCount: diagnostics.length, smells };
 	}
 
 	public dispose(): void {
@@ -71,9 +88,11 @@ export class DiagnosticsController implements vscode.Disposable {
 		this.diagnostics.dispose();
 	}
 
-	private scheduleAnalysis(document: vscode.TextDocument): void {
+	private scheduleAnalysis(document: vscode.TextDocument, trigger: "open" | "change" | "save"): void {
 		const config = getExtensionConfig();
-		if (!this.isAnalyzable(document, config, false)) {
+		const skipReason = this.getNonAnalyzableReason(document, config, false);
+		if (skipReason) {
+			this.log(`Automatic analysis skipped (${skipReason}) for ${document.uri.fsPath}`);
 			this.clear(document.uri);
 			return;
 		}
@@ -92,6 +111,9 @@ export class DiagnosticsController implements vscode.Disposable {
 		}, config.debounceMs);
 
 		this.pendingRuns.set(key, timer);
+		this.log(
+			`Automatic analysis scheduled (${trigger}, debounce=${config.debounceMs}ms) for ${document.uri.fsPath}`,
+		);
 	}
 
 	private async runScheduled(uri: vscode.Uri, version: number): Promise<void> {
@@ -113,6 +135,24 @@ export class DiagnosticsController implements vscode.Disposable {
 		const activeVersion = this.runVersions.get(key);
 		if (activeVersion !== version) {
 			return;
+		}
+
+		if (result.error) {
+			this.log(`Automatic analysis failed for ${document.uri.fsPath}`);
+			return;
+		}
+
+		if (result.diagnosticsCount > 0 && result.smells) {
+			this.log(
+				`Automatic analysis completed for ${document.uri.fsPath}: ${result.diagnosticsCount} smell(s) found`,
+			);
+			for (const smell of result.smells) {
+				this.log(
+					`  - ${smell.start.line}:${smell.start.column}-${smell.end.line}:${smell.end.column} ${smell.message}`,
+				);
+			}
+		} else {
+			this.log(`Automatic analysis completed for ${document.uri.fsPath}: no smells found`);
 		}
 
 		if (result.diagnosticsCount === 0) {
@@ -137,18 +177,38 @@ export class DiagnosticsController implements vscode.Disposable {
 		config: ReturnType<typeof getExtensionConfig>,
 		force: boolean,
 	): boolean {
+		return this.getNonAnalyzableReason(document, config, force) === undefined;
+	}
+
+	private getNonAnalyzableReason(
+		document: vscode.TextDocument,
+		config: ReturnType<typeof getExtensionConfig>,
+		force: boolean,
+	): string | undefined {
 		if (!config.enabled) {
-			return false;
+			return "extension disabled by configuration";
 		}
 
 		if (document.isUntitled || document.uri.scheme !== "file") {
-			return false;
+			return "document is untitled or not a file URI";
 		}
 
 		if (force) {
-			return true;
+			return undefined;
 		}
 
-		return isTestFile(document.uri, config.includePatterns);
+		if (!isTestFile(document.uri, config.includePatterns)) {
+			return "file does not match snuts-js.includePatterns";
+		}
+
+		return undefined;
+	}
+
+	private log(message: string): void {
+		this.outputChannel.appendLine(`[${new Date().toISOString()}] ${message}`);
+	}
+
+	private shouldObserveDocument(document: vscode.TextDocument): boolean {
+		return document.uri.scheme === "file";
 	}
 }

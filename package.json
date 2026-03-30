@@ -36,7 +36,7 @@
     "onLanguage:typescriptreact",
     "onCommand:snuts-js.analyzeCurrentFile"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "contributes": {
     "commands": [
       {
