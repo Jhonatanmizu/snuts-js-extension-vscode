@@ -3,9 +3,27 @@
   "displayName": "SNUTS.js",
   "description": "Detects test smells in JavaScript and TypeScript tests using @snutsjs/core and publishes diagnostics in VS Code.",
   "version": "0.0.1",
+  "publisher": "Jhonatanmizu",
   "license": "GPL-3.0",
+  "icon": "images/logo.png",
+  "keywords": [
+    "tests",
+    "test-smells",
+    "javascript",
+    "typescript",
+    "diagnostics"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jjo/snuts-js"
+  },
+  "homepage": "https://github.com/jjo/snuts-js#readme",
+  "bugs": {
+    "url": "https://github.com/jjo/snuts-js/issues"
+  },
   "engines": {
-    "vscode": "^1.110.0"
+    "vscode": "^1.110.0",
+    "node": ">=18"
   },
   "categories": [
     "Other"
@@ -75,12 +93,18 @@
     "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "vsix": "yarn run package && vsce package --yarn",
+    "publish:marketplace": "yarn run package && vsce publish --yarn",
+    "publish:patch": "yarn run package && vsce publish patch --yarn",
+    "publish:minor": "yarn run package && vsce publish minor --yarn",
+    "publish:major": "yarn run package && vsce publish major --yarn"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.110.0",
+    "@vscode/vsce": "^3.6.2",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.3",
