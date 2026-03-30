@@ -2,23 +2,41 @@ import { logAnalysisError } from '../utils/outputChannel.js';
 import { type TestSmell } from './types.js';
 
 type DetectorConstructor = new () => unknown;
+type DetectorRunnerConstructor = new (detectors: unknown[]) => DetectorRunnerLike;
 type DetectorRunnerLike = {
 	run(file: string): Promise<TestSmell[]>;
 };
 type SnutsCoreModule = {
-	DetectorRunner: new (detectors: unknown[]) => DetectorRunnerLike;
-	AnonymousTestLogicDetector: DetectorConstructor;
-	CommentsOnlyLogicTestDetector: DetectorConstructor;
-	ComplexSnapshotTestLogicDetector: DetectorConstructor;
-	ConditionalTestLogicDetector: DetectorConstructor;
-	DetectorTestWithoutDescriptionLogic: DetectorConstructor;
-	GeneralFixtureTestLogicDetector: DetectorConstructor;
-	IdenticalDescriptionTestLogicDetector: DetectorConstructor;
-	OvercommentedTestLogicDetector: DetectorConstructor;
+	DetectorRunner?: new (detectors: unknown[]) => DetectorRunnerLike;
+	detectors?: Record<string, unknown>;
+	default?: {
+		DetectorRunner?: new (detectors: unknown[]) => DetectorRunnerLike;
+		detectors?: Record<string, unknown>;
+	};
+	AnonymousTestLogicDetector?: DetectorConstructor;
+	CommentsOnlyLogicTestDetector?: DetectorConstructor;
+	ComplexSnapshotTestLogicDetector?: DetectorConstructor;
+	ConditionalTestLogicDetector?: DetectorConstructor;
+	DetectorTestWithoutDescriptionLogic?: DetectorConstructor;
+	GeneralFixtureTestLogicDetector?: DetectorConstructor;
+	IdenticalDescriptionTestLogicDetector?: DetectorConstructor;
+	OvercommentedTestLogicDetector?: DetectorConstructor;
 };
 
 function isDetectorConstructor(value: unknown): value is DetectorConstructor {
 	return typeof value === 'function';
+}
+
+function isDetectorRunnerConstructor(value: unknown): value is DetectorRunnerConstructor {
+	return typeof value === 'function';
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+	if (value && typeof value === 'object') {
+		return value as Record<string, unknown>;
+	}
+
+	return {};
 }
 
 export class TestSmellAnalyzer {
@@ -64,27 +82,43 @@ export class TestSmellAnalyzer {
 
 	private async createRunner(): Promise<DetectorRunnerLike> {
 		const snutsCore = (await import('@snutsjs/core')) as unknown as SnutsCoreModule;
-		const detectorEntries = [
-			['AnonymousTestLogicDetector', snutsCore.AnonymousTestLogicDetector],
-			['CommentsOnlyLogicTestDetector', snutsCore.CommentsOnlyLogicTestDetector],
-			['ComplexSnapshotTestLogicDetector', snutsCore.ComplexSnapshotTestLogicDetector],
-			['ConditionalTestLogicDetector', snutsCore.ConditionalTestLogicDetector],
-			['DetectorTestWithoutDescriptionLogic', snutsCore.DetectorTestWithoutDescriptionLogic],
-			['GeneralFixtureTestLogicDetector', snutsCore.GeneralFixtureTestLogicDetector],
-			['IdenticalDescriptionTestLogicDetector', snutsCore.IdenticalDescriptionTestLogicDetector],
-			['OvercommentedTestLogicDetector', snutsCore.OvercommentedTestLogicDetector],
-		] as const;
+		const mergedModule = {
+			...toRecord(snutsCore.default),
+			...toRecord(snutsCore),
+		};
 
-		const invalidDetectorNames = detectorEntries
-			.filter(([, DetectorClass]) => !isDetectorConstructor(DetectorClass))
-			.map(([name]) => name);
-
-		if (invalidDetectorNames.length > 0) {
-			throw new Error(`Invalid detector exports from @snutsjs/core: ${invalidDetectorNames.join(', ')}`);
+		const detectorRunnerCtor = mergedModule.DetectorRunner;
+		if (!isDetectorRunnerConstructor(detectorRunnerCtor)) {
+			throw new Error('Invalid DetectorRunner export from @snutsjs/core.');
 		}
 
-		const detectorInstances = detectorEntries.map(([, DetectorClass]) => new DetectorClass());
+		const registry = toRecord(mergedModule.detectors);
+		const registryDetectorCtors = Object.values(registry).reduce<DetectorConstructor[]>((accumulator, value) => {
+			if (isDetectorConstructor(value)) {
+				accumulator.push(value);
+			}
 
-		return new snutsCore.DetectorRunner(detectorInstances);
+			return accumulator;
+		}, []);
+
+		const detectorConstructors: DetectorConstructor[] = registryDetectorCtors.length > 0
+			? registryDetectorCtors
+			: [
+				mergedModule.AnonymousTestLogicDetector,
+				mergedModule.CommentsOnlyLogicTestDetector,
+				mergedModule.ComplexSnapshotTestLogicDetector,
+				mergedModule.ConditionalTestLogicDetector,
+				mergedModule.DetectorTestWithoutDescriptionLogic,
+				mergedModule.GeneralFixtureTestLogicDetector,
+				mergedModule.IdenticalDescriptionTestLogicDetector,
+				mergedModule.OvercommentedTestLogicDetector,
+			].filter(isDetectorConstructor);
+
+		if (detectorConstructors.length === 0) {
+			throw new Error('No compatible detector exports found from @snutsjs/core.');
+		}
+
+		const detectorInstances = detectorConstructors.map((DetectorClass) => new DetectorClass());
+		return new detectorRunnerCtor(detectorInstances);
 	}
 }
