@@ -1,0 +1,95 @@
+{
+  "name": "snuts-js",
+  "displayName": "SNUTS.js",
+  "description": "Detects test smells in JavaScript and TypeScript tests using @snutsjs/core and publishes diagnostics in VS Code.",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onCommand:snuts-js.analyzeCurrentFile"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "snuts-js.analyzeCurrentFile",
+        "title": "SNUTS.js: Analyze Current Test File"
+      }
+    ],
+    "configuration": {
+      "title": "SNUTS.js",
+      "properties": {
+        "snuts-js.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable test smell diagnostics."
+        },
+        "snuts-js.debounceMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "description": "Debounce in milliseconds before analysis runs after edits."
+        },
+        "snuts-js.includePatterns": {
+          "type": "array",
+          "description": "Glob-like patterns used to select test files for analysis.",
+          "default": [
+            "**/*.test.ts",
+            "**/*.spec.ts",
+            "**/*.test.js",
+            "**/*.spec.js"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "snuts-js.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ],
+          "description": "Default severity used for smell diagnostics."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run package",
+    "compile": "yarn run check-types && yarn run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
+    "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.110.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "@snutsjs/core": "^1.1.0"
+  }
+}
