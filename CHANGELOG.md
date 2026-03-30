@@ -17,3 +17,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - improve loggers.
 - add new `@snutsjs/core` features, to show description and explanation to each smell.
+
+
+## [0.0.3] - 2026-03-30
+
+- bug fixes
+
+## [0.0.4] - 2026-03-30
+
+- fix logger not showing correctly
+- fix command not working

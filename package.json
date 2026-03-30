@@ -2,7 +2,7 @@
   "name": "snuts-js",
   "displayName": "SNUTS.js",
   "description": "Detects test smells in JavaScript and TypeScript tests using @snutsjs/core and publishes diagnostics in VS Code.",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "publisher": "Jhonatanmizu",
   "license": "GPL-3.0",
   "icon": "images/logo.png",
