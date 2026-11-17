@@ -17,12 +17,35 @@ Let SNUTS.js help you maintain clean, maintainable test suites.
 
 ## Features
 
-- ✨ **Real-time Detection** — Analyzes test files as you type (with configurable debounce)
-- 🎯 **In-Editor Diagnostics** — See issues directly in your code with inline messages
+- ✨ **Real-time Detection** — Analyzes test files on open, edit, and save (with configurable debounce)
+- 🎯 **In-Editor Diagnostics & Explanations** — See issues directly in your code with category codes (`description`) and actionable remediation explanations (`explanation`) on hover
 - 📋 **Problems Panel Integration** — View all detected smells in VS Code's Problems panel
-- ⚡ **Manual Analysis** — Run analysis on demand with a command
+- 📺 **Dedicated Output Channel** — Inspect detailed analysis runs, line/column ranges, and smell explanations in the **SNUTS.js** Output Channel
+- ⚡ **Manual Analysis** — Run analysis on demand via the Command Palette (`SNUTS.js: Analyze Current Test File`)
 - 🎛️ **Fully Configurable** — Customize severity levels, file patterns, and detection debounce
-- 🔄 **Auto-Discovery** — Automatically detects new detectors added to `@snutsjs/core`
+- 🔄 **Auto-Discovery** — Automatically detects new detectors exported by `@snutsjs/core`
+
+## Supported Test Smells (15 Built-in Detectors)
+
+Powered by `@snutsjs/core`, the extension detects 15 test smells out of the box:
+
+| Smell Category (`code`)  | Detector Class                          | What It Detects                                                                                      |
+| ------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Anonymous Test           | `AnonymousTestLogicDetector`            | Test descriptions that are too short (at most 2 words after trimming).                               |
+| Comments-Only Test       | `CommentsOnlyLogicTestDetector`         | `it` / `test` bodies that are empty or contain only comments.                                        |
+| Complex Snapshot         | `ComplexSnapshotTestLogicDetector`      | Snapshot matchers (`toMatchSnapshot`, `toMatchInlineSnapshot`) with templates exceeding 50 lines.    |
+| Conditional Test Logic   | `ConditionalTestLogicDetector`          | Branching (`if`, `switch`, loops) inside a test body instead of separate test cases.                 |
+| General Fixture          | `GeneralFixtureTestLogicDetector`       | Variables initialized in `beforeAll` / `beforeEach` that are not used across all tests in the suite. |
+| Identical Description    | `IdenticalDescriptionTestLogicDetector` | Duplicate `it` / `test` descriptions within the same file.                                           |
+| Overcommented Test       | `OvercommentedTestLogicDetector`        | Test cases with more than 5 distinct comment anchors.                                                |
+| Test Without Description | `DetectorTestWithoutDescriptionLogic`   | `it()` / `test()` calls missing a leading string literal description.                                |
+| Non-Functional Statement | `NonFunctionalStatementDetector`        | Effectively empty blocks with no executable statements or comments.                                  |
+| Focused / Isolated Test  | `OnlyTestDetector`                      | Leftover `.only` calls on `it`, `test`, or `describe`.                                               |
+| Sensitive Equality       | `SensitiveEqualityDetector`             | Assertions relying on brittle `.toString()` string coercion.                                         |
+| Suboptimal Assertion     | `SubOptimalAssertDetector`              | Assertions that obscure intent compared to idiomatic matchers.                                       |
+| Transcripting Test       | `TranscriptingTestDetector`             | `console.log`, `console.error`, `console.warn`, or `console.info` calls inside tests.                |
+| Verbose Test             | `VerboseTestDetector`                   | Test blocks exceeding 13 statements, indicating multiple scenarios packed into a single test.        |
+| Assertion in Setup       | `VerifyInSetupDetector`                 | Assertions (`expect` / `assert`) placed inside lifecycle hooks (`beforeAll`, `beforeEach`, `after*`).|
 
 ## Installation
 
@@ -52,9 +75,9 @@ Customize SNUTS.js behavior via VS Code settings (`Preferences: Open Settings`):
 ```
 
 ### Debounce Interval
-Delay (in milliseconds) before running analysis after making edits:
+Delay (in milliseconds, minimum `50`, default `300`) before running analysis after making edits:
 ```json
-"snuts-js.debounceMs": 500
+"snuts-js.debounceMs": 300
 ```
 
 ### File Patterns
@@ -97,6 +120,12 @@ If not configured, SNUTS.js analyzes files matching:
 - **Test Files**: JavaScript or TypeScript files matching configured patterns
 
 ## Troubleshooting
+
+### Inspecting the SNUTS.js Output Channel
+
+SNUTS.js writes detailed execution logs, skipped-file reasons, and per-smell remediation explanations to its dedicated Output Channel:
+1. Open the **Output** panel (`Ctrl+Shift+U` / `Cmd+Shift+U`)
+2. Select **SNUTS.js** from the channel dropdown
 
 ### Extension doesn't show up in the Problems panel
 
