@@ -22,8 +22,8 @@ Let SNUTS.js help you maintain clean, maintainable test suites.
 - 📋 **Problems Panel Integration** — View all detected smells in VS Code's Problems panel
 - 📺 **Dedicated Output Channel** — Inspect detailed analysis runs, line/column ranges, and smell explanations in the **SNUTS.js** Output Channel
 - ⚡ **Manual Analysis** — Run analysis on demand via the Command Palette (`SNUTS.js: Analyze Current Test File`)
-- 🎛️ **Fully Configurable** — Customize severity levels, file patterns, and detection debounce
-- 🔄 **Auto-Discovery** — Automatically detects new detectors exported by `@snutsjs/core`
+- 🎛️ **Fully Configurable** — Customize file patterns and detection debounce
+- 🔄 **Auto-Discovery** — Automatically detects new detectors exported by `@snutsjs/core` (`createDetectorInstances` / `detectors` registry)
 
 ## Supported Test Smells (15 Built-in Detectors)
 
@@ -88,12 +88,6 @@ Specify which test files to analyze (glob patterns):
   "**/*.spec.ts",
   "**/__tests__/**/*.ts"
 ]
-```
-
-### Diagnostic Severity
-Choose how smells are reported: `error`, `warning`, or `information`:
-```json
-"snuts-js.severity": "warning"
 ```
 
 ### Default File Patterns

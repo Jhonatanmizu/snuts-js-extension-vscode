@@ -1,10 +1,6 @@
 import * as vscode from "vscode";
 import type { ILogger } from "@snutsjs/core";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function now(): string {
   return new Date().toISOString();
 }
@@ -22,7 +18,6 @@ function formatEntry(objOrMsg: object | string, msg?: string): string {
     return objOrMsg;
   }
 
-  // objOrMsg is a context object
   let context = "";
   try {
     context = JSON.stringify(objOrMsg);
@@ -37,10 +32,6 @@ function formatEntry(objOrMsg: object | string, msg?: string): string {
   return context;
 }
 
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
-
 /**
  * Creates an {@link ILogger}-compatible implementation that writes every log
  * entry to the supplied VS Code {@link vscode.OutputChannel}.
@@ -48,15 +39,6 @@ function formatEntry(objOrMsg: object | string, msg?: string): string {
  * This must be passed to `setLogger()` from `@snutsjs/core` **before** the
  * first call to any library API so that pino never gets a chance to write
  * JSON to `process.stdout` (which would corrupt a stdio LSP transport).
- *
- * @example
- * ```ts
- * import { setLogger } from "@snutsjs/core";
- * import { createOutputChannelLogger } from "./utils/coreLogger.js";
- *
- * const out = vscode.window.createOutputChannel("SNUTS.js");
- * setLogger(createOutputChannelLogger(out));
- * ```
  */
 export function createOutputChannelLogger(
   channel: vscode.OutputChannel,
@@ -66,17 +48,13 @@ export function createOutputChannelLogger(
     objOrMsg: object | string,
     msg?: string,
   ): void {
-    const label = level.padEnd(5); // "debug", "info ", "warn ", "error"
+    const label = level.padEnd(5);
     channel.appendLine(
       `[${now()}] [core:${label}] ${formatEntry(objOrMsg, msg)}`,
     );
   }
 
   return {
-    // Each method uses `object | string` as the first-param type so it
-    // satisfies both overload signatures declared in ILogger while remaining
-    // a single implementation at runtime.
-
     debug(objOrMsg: object | string, msg?: string): void {
       write("debug", objOrMsg, msg);
     },

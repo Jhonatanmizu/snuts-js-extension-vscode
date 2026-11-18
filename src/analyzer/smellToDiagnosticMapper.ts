@@ -57,14 +57,13 @@ function buildDiagnosticMessage(smell: TestSmell): string {
 export function mapSmellsToDiagnostics(
   smells: TestSmell[],
   document: vscode.TextDocument,
-  severity: vscode.DiagnosticSeverity,
 ): vscode.Diagnostic[] {
   return smells.map((smell) => {
     const message = buildDiagnosticMessage(smell);
     const diagnostic = new vscode.Diagnostic(
       smellToRange(smell, document),
       message,
-      severity,
+      vscode.DiagnosticSeverity.Warning,
     );
     diagnostic.source = "SNUTS.js";
     diagnostic.code = smell.description ?? "test-smell";

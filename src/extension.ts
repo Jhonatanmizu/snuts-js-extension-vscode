@@ -2,19 +2,11 @@ import * as vscode from "vscode";
 import { TestSmellAnalyzer } from "./analyzer/testSmellAnalyzer.js";
 import { DiagnosticsController } from "./providers/diagnosticsController.js";
 import { createOutputChannelLogger } from "./utils/coreLogger.js";
-import { getOutputChannel } from "./utils/outputChannel.js";
+import { formatSmellLogLines, getOutputChannel } from "./utils/outputChannel.js";
 
-export function activate(context: vscode.ExtensionContext) {
-  // ── OutputChannel + core logger must come first ───────────────────────────
-  // @snutsjs/core ships a plain pino instance as its default logger. Pino
-  // writes JSON to process.stdout the moment any log method is called. On a
-  // stdio LSP transport that would corrupt the protocol before the first
-  // response is sent.
-  //
-  // createOutputChannelLogger() builds an ILogger that forwards every library
-  // log line to the VS Code OutputChannel instead. TestSmellAnalyzer calls
-  // setLogger() with this instance as the absolute first operation after
-  // importing @snutsjs/core, so pino never gets a chance to write.
+export function activate(context: vscode.ExtensionContext): void {
+  // Replace @snutsjs/core's default pino logger before detector instantiation
+  // so stray stdout writes cannot corrupt the VS Code extension host transport.
   const outputChannel = getOutputChannel();
   const coreLogger = createOutputChannelLogger(outputChannel);
 
@@ -50,6 +42,16 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.workspace.onDidCloseTextDocument((document) => {
         diagnosticsController.handleDocumentClose(document);
+      }),
+    );
+
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("snuts-js")) {
+          for (const document of vscode.workspace.textDocuments) {
+            diagnosticsController.handleDocumentOpen(document);
+          }
+        }
       }),
     );
 
@@ -111,14 +113,8 @@ export function activate(context: vscode.ExtensionContext) {
           );
 
           for (const smell of result.smells ?? []) {
-            const category = smell.description ? `[${smell.description}] ` : "";
-            outputChannel.appendLine(
-              `[${new Date().toISOString()}]   - ${smell.start.line}:${smell.start.column}-${smell.end.line}:${smell.end.column} ${category}${smell.message}`,
-            );
-            if (smell.explanation) {
-              outputChannel.appendLine(
-                `[${new Date().toISOString()}]     💡 ${smell.explanation}`,
-              );
+            for (const line of formatSmellLogLines(smell)) {
+              outputChannel.appendLine(`[${new Date().toISOString()}] ${line}`);
             }
           }
 
@@ -165,4 +161,4 @@ export function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() {}
+export function deactivate(): void {}

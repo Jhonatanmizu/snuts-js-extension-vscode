@@ -78,16 +78,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "snuts-js.severity": {
-          "type": "string",
-          "default": "warning",
-          "enum": [
-            "error",
-            "warning",
-            "information"
-          ],
-          "description": "Default severity used for smell diagnostics."
         }
       }
     }

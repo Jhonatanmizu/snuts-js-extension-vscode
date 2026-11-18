@@ -2,11 +2,8 @@ import * as vscode from "vscode";
 import { mapSmellsToDiagnostics } from "../analyzer/smellToDiagnosticMapper.js";
 import { TestSmellAnalyzer } from "../analyzer/testSmellAnalyzer.js";
 import type { TestSmell } from "../analyzer/types.js";
-import {
-  getExtensionConfig,
-  toDiagnosticSeverity,
-} from "../config/extensionConfig.js";
-import { getOutputChannel } from "../utils/outputChannel.js";
+import { getExtensionConfig } from "../config/extensionConfig.js";
+import { formatSmellLogLines, getOutputChannel } from "../utils/outputChannel.js";
 import { isTestFile } from "../utils/testFileMatcher.js";
 
 type AnalyzerLike = Pick<TestSmellAnalyzer, "analyze" | "consumeLastError">;
@@ -75,11 +72,7 @@ export class DiagnosticsController implements vscode.Disposable {
       };
     }
 
-    const diagnostics = mapSmellsToDiagnostics(
-      smells,
-      document,
-      toDiagnosticSeverity(config.severity),
-    );
+    const diagnostics = mapSmellsToDiagnostics(smells, document);
 
     this.diagnostics.set(document.uri, diagnostics);
     return { diagnosticsCount: diagnostics.length, smells };
@@ -161,12 +154,8 @@ export class DiagnosticsController implements vscode.Disposable {
         `Automatic analysis completed for ${document.uri.fsPath}: ${result.diagnosticsCount} smell(s) found`,
       );
       for (const smell of result.smells) {
-        const category = smell.description ? `[${smell.description}] ` : "";
-        this.log(
-          `  - ${smell.start.line}:${smell.start.column}-${smell.end.line}:${smell.end.column} ${category}${smell.message}`,
-        );
-        if (smell.explanation) {
-          this.log(`    💡 ${smell.explanation}`);
+        for (const line of formatSmellLogLines(smell)) {
+          this.log(line);
         }
       }
     } else {

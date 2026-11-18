@@ -3,6 +3,7 @@ import { logAnalysisError } from "../utils/outputChannel.js";
 import { type TestSmell } from "./types.js";
 
 type DetectorConstructor = new () => unknown;
+type DetectorFactory = () => unknown[];
 type DetectorRunnerConstructor = new (
   detectors: unknown[],
 ) => DetectorRunnerLike;
@@ -11,11 +12,13 @@ type DetectorRunnerLike = {
 };
 type SnutsCoreModule = {
   DetectorRunner?: new (detectors: unknown[]) => DetectorRunnerLike;
+  createDetectorInstances?: DetectorFactory;
   detectors?: Record<string, unknown>;
   setLogger?: (logger: ILogger) => void;
   silentLogger?: ILogger;
   default?: {
     DetectorRunner?: new (detectors: unknown[]) => DetectorRunnerLike;
+    createDetectorInstances?: DetectorFactory;
     detectors?: Record<string, unknown>;
     setLogger?: (logger: ILogger) => void;
     silentLogger?: ILogger;
@@ -27,10 +30,39 @@ type SnutsCoreModule = {
   DetectorTestWithoutDescriptionLogic?: DetectorConstructor;
   GeneralFixtureTestLogicDetector?: DetectorConstructor;
   IdenticalDescriptionTestLogicDetector?: DetectorConstructor;
+  NonFunctionalStatementDetector?: DetectorConstructor;
+  OnlyTestDetector?: DetectorConstructor;
   OvercommentedTestLogicDetector?: DetectorConstructor;
+  SensitiveEqualityDetector?: DetectorConstructor;
+  SubOptimalAssertDetector?: DetectorConstructor;
+  TranscriptingTestDetector?: DetectorConstructor;
+  VerboseTestDetector?: DetectorConstructor;
+  VerifyInSetupDetector?: DetectorConstructor;
 };
 
+const FALLBACK_DETECTOR_NAMES: readonly (keyof SnutsCoreModule)[] = [
+  "AnonymousTestLogicDetector",
+  "CommentsOnlyLogicTestDetector",
+  "ComplexSnapshotTestLogicDetector",
+  "ConditionalTestLogicDetector",
+  "DetectorTestWithoutDescriptionLogic",
+  "GeneralFixtureTestLogicDetector",
+  "IdenticalDescriptionTestLogicDetector",
+  "NonFunctionalStatementDetector",
+  "OnlyTestDetector",
+  "OvercommentedTestLogicDetector",
+  "SensitiveEqualityDetector",
+  "SubOptimalAssertDetector",
+  "TranscriptingTestDetector",
+  "VerboseTestDetector",
+  "VerifyInSetupDetector",
+];
+
 function isDetectorConstructor(value: unknown): value is DetectorConstructor {
+  return typeof value === "function";
+}
+
+function isDetectorFactory(value: unknown): value is DetectorFactory {
   return typeof value === "function";
 }
 
@@ -99,11 +131,8 @@ export class TestSmellAnalyzer {
     const defaultRecord = toRecord(snutsCore.default);
     const nestedDefaultRecord = toRecord(defaultRecord["default"]);
 
-    // ── setLogger must be the very first call after the module is imported ──
-    // The default @snutsjs/core logger is a plain pino instance that writes
-    // JSON to process.stdout. In a stdio LSP transport a single stray write
-    // would corrupt the protocol. Calling setLogger here, before any detector
-    // is instantiated or run, ensures pino never gets a chance to write.
+    // Replace @snutsjs/core's default pino logger before detector instantiation
+    // so stray stdout writes cannot corrupt the VS Code extension host transport.
     const setLoggerFn = (moduleRecord["setLogger"] ??
       defaultRecord["setLogger"] ??
       nestedDefaultRecord["setLogger"]) as
@@ -112,11 +141,8 @@ export class TestSmellAnalyzer {
 
     if (typeof setLoggerFn === "function") {
       if (this.coreLogger) {
-        // Forward library logs to the VS Code OutputChannel.
         setLoggerFn(this.coreLogger);
       } else {
-        // No channel provided – use the library's own silentLogger so that
-        // pino is still replaced and stdout stays clean.
         const silentLoggerValue = (moduleRecord["silentLogger"] ??
           defaultRecord["silentLogger"] ??
           nestedDefaultRecord["silentLogger"]) as ILogger | undefined;
@@ -127,7 +153,6 @@ export class TestSmellAnalyzer {
       }
     }
 
-    // ── DetectorRunner resolution ─────────────────────────────────────────
     const detectorRunnerCtor = [
       moduleRecord["DetectorRunner"],
       defaultRecord["DetectorRunner"],
@@ -138,51 +163,38 @@ export class TestSmellAnalyzer {
       throw new Error("Invalid DetectorRunner export from @snutsjs/core.");
     }
 
-    // ── Detector resolution ───────────────────────────────────────────────
+    const createDetectorInstancesFn = [
+      moduleRecord["createDetectorInstances"],
+      defaultRecord["createDetectorInstances"],
+      nestedDefaultRecord["createDetectorInstances"],
+    ].find(isDetectorFactory);
+
+    if (isDetectorFactory(createDetectorInstancesFn)) {
+      const instances = createDetectorInstancesFn();
+      if (Array.isArray(instances) && instances.length > 0) {
+        return new detectorRunnerCtor(instances);
+      }
+    }
+
     const registry = toRecord(
       moduleRecord["detectors"] ??
         defaultRecord["detectors"] ??
         nestedDefaultRecord["detectors"],
     );
 
-    const registryDetectorCtors = Object.values(registry).reduce<
-      DetectorConstructor[]
-    >((accumulator, value) => {
-      if (isDetectorConstructor(value)) {
-        accumulator.push(value);
-      }
-      return accumulator;
-    }, []);
+    const registryDetectorCtors = Object.values(registry).filter(
+      isDetectorConstructor,
+    );
 
     const detectorConstructors: DetectorConstructor[] =
       registryDetectorCtors.length > 0
         ? registryDetectorCtors
-        : [
-            moduleRecord["AnonymousTestLogicDetector"] ??
-              defaultRecord["AnonymousTestLogicDetector"] ??
-              nestedDefaultRecord["AnonymousTestLogicDetector"],
-            moduleRecord["CommentsOnlyLogicTestDetector"] ??
-              defaultRecord["CommentsOnlyLogicTestDetector"] ??
-              nestedDefaultRecord["CommentsOnlyLogicTestDetector"],
-            moduleRecord["ComplexSnapshotTestLogicDetector"] ??
-              defaultRecord["ComplexSnapshotTestLogicDetector"] ??
-              nestedDefaultRecord["ComplexSnapshotTestLogicDetector"],
-            moduleRecord["ConditionalTestLogicDetector"] ??
-              defaultRecord["ConditionalTestLogicDetector"] ??
-              nestedDefaultRecord["ConditionalTestLogicDetector"],
-            moduleRecord["DetectorTestWithoutDescriptionLogic"] ??
-              defaultRecord["DetectorTestWithoutDescriptionLogic"] ??
-              nestedDefaultRecord["DetectorTestWithoutDescriptionLogic"],
-            moduleRecord["GeneralFixtureTestLogicDetector"] ??
-              defaultRecord["GeneralFixtureTestLogicDetector"] ??
-              nestedDefaultRecord["GeneralFixtureTestLogicDetector"],
-            moduleRecord["IdenticalDescriptionTestLogicDetector"] ??
-              defaultRecord["IdenticalDescriptionTestLogicDetector"] ??
-              nestedDefaultRecord["IdenticalDescriptionTestLogicDetector"],
-            moduleRecord["OvercommentedTestLogicDetector"] ??
-              defaultRecord["OvercommentedTestLogicDetector"] ??
-              nestedDefaultRecord["OvercommentedTestLogicDetector"],
-          ].filter(isDetectorConstructor);
+        : FALLBACK_DETECTOR_NAMES.map(
+            (name) =>
+              moduleRecord[name] ??
+              defaultRecord[name] ??
+              nestedDefaultRecord[name],
+          ).filter(isDetectorConstructor);
 
     if (detectorConstructors.length === 0) {
       throw new Error(

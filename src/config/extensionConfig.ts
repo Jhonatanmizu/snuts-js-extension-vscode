@@ -1,12 +1,9 @@
 import * as vscode from "vscode";
 
-export type ExtensionSeverity = "error" | "warning" | "information";
-
 export interface ExtensionConfig {
 	enabled: boolean;
 	debounceMs: number;
 	includePatterns: string[];
-	severity: ExtensionSeverity;
 }
 
 const CONFIG_SECTION = "snuts-js";
@@ -46,14 +43,6 @@ function normalizeDebounceMs(value: number | undefined): number {
 	return Math.max(50, Math.trunc(value));
 }
 
-function normalizeSeverity(value: string | undefined): ExtensionSeverity {
-	if (value === "error" || value === "warning" || value === "information") {
-		return value;
-	}
-
-	return "warning";
-}
-
 export function getExtensionConfig(): ExtensionConfig {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 
@@ -61,18 +50,5 @@ export function getExtensionConfig(): ExtensionConfig {
 		enabled: config.get<boolean>("enabled", true),
 		debounceMs: normalizeDebounceMs(config.get<number>("debounceMs", DEFAULT_DEBOUNCE_MS)),
 		includePatterns: normalizePatterns(config.get<string[]>("includePatterns", DEFAULT_INCLUDE_PATTERNS)),
-		severity: normalizeSeverity(config.get<string>("severity", "warning")),
 	};
-}
-
-export function toDiagnosticSeverity(severity: ExtensionSeverity): vscode.DiagnosticSeverity {
-	switch (severity) {
-		case "error":
-			return vscode.DiagnosticSeverity.Error;
-		case "information":
-			return vscode.DiagnosticSeverity.Information;
-		case "warning":
-		default:
-			return vscode.DiagnosticSeverity.Warning;
-	}
 }
