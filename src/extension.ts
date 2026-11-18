@@ -232,11 +232,34 @@ export function activate(context: vscode.ExtensionContext): void {
       },
     );
 
+    const analyzeBatchCommand = vscode.commands.registerCommand(
+      "snuts-js.analyzeBatch",
+      async (clickedUri?: vscode.Uri, selectedUris?: vscode.Uri[]) => {
+        await workspaceReportController.analyzeBatch(clickedUri, selectedUris);
+      },
+    );
+
+    const refactorBatchCommand = vscode.commands.registerCommand(
+      "snuts-js.refactorBatch",
+      async (clickedUri?: vscode.Uri, selectedUris?: vscode.Uri[]) => {
+        const modifiedUris = await refactorController.refactorBatch(
+          clickedUri,
+          selectedUris,
+        );
+        for (const uri of modifiedUris) {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await diagnosticsController.analyzeNow(doc, true);
+        }
+      },
+    );
+
     context.subscriptions.push(
       analyzeCurrentFileCommand,
       configureAICommand,
       refactorCurrentFileCommand,
       analyzeWorkspaceCommand,
+      analyzeBatchCommand,
+      refactorBatchCommand,
     );
 
     outputChannel.appendLine(

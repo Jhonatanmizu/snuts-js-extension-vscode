@@ -11,7 +11,11 @@ import {
 import * as vscode from "vscode";
 import { getExtensionConfig } from "../config/extensionConfig.js";
 import type { DiagnosticsController } from "../providers/diagnosticsController.js";
-import { getOutputChannel } from "../utils/outputChannel.js";
+import {
+  findMatchingTestFilesInWorkspace,
+  resolveBatchTargetFiles,
+} from "../utils/batchTargetResolver.js";
+import { formatSmellLogLines, getOutputChannel } from "../utils/outputChannel.js";
 
 export type ReportFormatChoice = "csv" | "json" | "both";
 
@@ -27,13 +31,14 @@ const FORMAT_ITEMS: readonly FormatQuickPickItem[] = [
   {
     label: "CSV Report (.csv)",
     description: "csv",
-    detail: "Generate a comma-separated values report of all workspace test smells",
+    detail:
+      "Generate a comma-separated values report of detected test smells",
     format: "csv",
   },
   {
     label: "JSON Report (.json)",
     description: "json",
-    detail: "Generate a structured JSON array of all workspace test smells",
+    detail: "Generate a structured JSON array of detected test smells",
     format: "json",
   },
   {
@@ -71,6 +76,55 @@ export class WorkspaceReportController {
     this.projectAnalyzer = projectAnalyzer ?? createDefaultProjectAnalyzer();
   }
 
+  public async analyzeBatch(
+    clickedUri?: vscode.Uri,
+    selectedUris?: readonly vscode.Uri[],
+  ): Promise<Smell[]> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      void vscode.window.showInformationMessage(
+        "Open a workspace folder to run SNUTS.js batch analysis.",
+      );
+      return [];
+    }
+
+    const config = getExtensionConfig();
+    const targetFiles = await resolveBatchTargetFiles(
+      clickedUri,
+      selectedUris,
+      config.includePatterns,
+      "SNUTS.js: Select Test Files for Batch Analysis",
+    );
+
+    if (targetFiles === undefined) {
+      return [];
+    }
+
+    if (targetFiles.length === 0) {
+      void vscode.window.showInformationMessage(
+        "No matching test files were found for batch analysis.",
+      );
+      return [];
+    }
+
+    const smells = await this.executeBatchAnalysis(targetFiles);
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+
+    const action = await vscode.window.showInformationMessage(
+      `SNUTS.js analyzed ${targetFiles.length} file(s) and found ${smells.length} potential test smell(s).`,
+      "Export Report (CSV/JSON)",
+      "Open Output",
+    );
+
+    if (action === "Export Report (CSV/JSON)") {
+      await this.promptAndSaveReports(workspaceRoot, smells);
+    } else if (action === "Open Output") {
+      this.outputChannel.show(true);
+    }
+
+    return smells;
+  }
+
   public async analyzeWorkspaceAndExportReport(): Promise<string[]> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -93,37 +147,12 @@ export class WorkspaceReportController {
 
     const config = getExtensionConfig();
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-
-    const { smells, analyzedFiles } = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: "SNUTS.js: Analyzing workspace test files...",
-        cancellable: false,
-      },
-      async (progress) => {
-        progress.report({ message: "Discovering test files..." });
-        const matchedUris = await this.findWorkspaceTestFiles(
-          config.includePatterns,
-        );
-        const filePaths = matchedUris.map((uri) => uri.fsPath);
-
-        if (filePaths.length === 0) {
-          return { smells: [] as Smell[], analyzedFiles: [] as string[] };
-        }
-
-        progress.report({
-          message: `Running detectors on ${filePaths.length} file(s)...`,
-        });
-        const detectedSmells = await this.projectAnalyzer.analyze(filePaths);
-
-        progress.report({ message: "Publishing workspace diagnostics..." });
-        await this.publishDiagnosticsByFile(filePaths, detectedSmells);
-
-        return { smells: detectedSmells, analyzedFiles: filePaths };
-      },
+    const matchedUris = await findMatchingTestFilesInWorkspace(
+      config.includePatterns,
     );
+    const filePaths = matchedUris.map((uri) => uri.fsPath);
 
-    if (analyzedFiles.length === 0) {
+    if (filePaths.length === 0) {
       this.log("Workspace analysis found no matching test files.");
       void vscode.window.showInformationMessage(
         "No test files matching snuts-js.includePatterns were found in the workspace.",
@@ -131,10 +160,7 @@ export class WorkspaceReportController {
       return [];
     }
 
-    this.log(
-      `Workspace analysis completed: ${smells.length} smell(s) across ${analyzedFiles.length} test file(s).`,
-    );
-
+    const smells = await this.executeBatchAnalysis(filePaths);
     const savedPaths = await this.saveReports(
       workspaceRoot,
       smells,
@@ -148,31 +174,75 @@ export class WorkspaceReportController {
       await vscode.window.showTextDocument(firstDoc, { preview: false });
 
       void vscode.window.showInformationMessage(
-        `SNUTS.js analyzed ${analyzedFiles.length} file(s) (${smells.length} smell(s)) and exported ${savedPaths.map((p) => path.basename(p)).join(", ")}.`,
+        `SNUTS.js analyzed ${filePaths.length} file(s) (${smells.length} smell(s)) and exported ${savedPaths.map((p) => path.basename(p)).join(", ")}.`,
       );
     }
 
     return savedPaths;
   }
 
-  private async findWorkspaceTestFiles(
-    includePatterns: readonly string[],
-  ): Promise<vscode.Uri[]> {
-    const uniqueByPath = new Map<string, vscode.Uri>();
+  private async executeBatchAnalysis(filePaths: string[]): Promise<Smell[]> {
+    const smells = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `SNUTS.js: Analyzing ${filePaths.length} test file(s)...`,
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({
+          message: `Running AST detectors on ${filePaths.length} file(s)...`,
+        });
+        const detectedSmells = await this.projectAnalyzer.analyze(filePaths);
 
-    for (const pattern of includePatterns) {
-      const matches = await vscode.workspace.findFiles(
-        pattern,
-        "**/node_modules/**",
-      );
-      for (const uri of matches) {
-        uniqueByPath.set(uri.fsPath, uri);
+        progress.report({ message: "Publishing diagnostics to Problems..." });
+        await this.publishDiagnosticsByFile(filePaths, detectedSmells);
+
+        return detectedSmells;
+      },
+    );
+
+    this.log(
+      `Batch analysis completed: ${smells.length} smell(s) across ${filePaths.length} test file(s).`,
+    );
+
+    for (const smell of smells) {
+      for (const line of formatSmellLogLines(smell)) {
+        this.log(`${path.basename(smell.file)} ${line.trimStart()}`);
       }
     }
 
-    return [...uniqueByPath.values()].sort((a, b) =>
-      a.fsPath.localeCompare(b.fsPath),
+    return smells;
+  }
+
+  private async promptAndSaveReports(
+    workspaceRoot: string,
+    smells: Smell[],
+  ): Promise<string[]> {
+    const pickedFormat =
+      await vscode.window.showQuickPick<FormatQuickPickItem>(FORMAT_ITEMS, {
+        title: "SNUTS.js: Export Test Smell Report",
+        placeHolder: "Select report format to export",
+        ignoreFocusOut: true,
+      });
+
+    if (!pickedFormat) {
+      return [];
+    }
+
+    const savedPaths = await this.saveReports(
+      workspaceRoot,
+      smells,
+      pickedFormat.format,
     );
+
+    if (savedPaths.length > 0) {
+      const firstDoc = await vscode.workspace.openTextDocument(
+        vscode.Uri.file(savedPaths[0]),
+      );
+      await vscode.window.showTextDocument(firstDoc, { preview: false });
+    }
+
+    return savedPaths;
   }
 
   private async publishDiagnosticsByFile(

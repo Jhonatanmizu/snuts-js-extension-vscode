@@ -19,9 +19,9 @@ Let SNUTS.js help you maintain clean, maintainable test suites.
 
 - ✨ **Real-time Detection** — Analyzes test files on open, edit, and save (with configurable debounce)
 - 🎯 **In-Editor Diagnostics & Explanations** — See issues directly in your code with category codes (`description`) and actionable remediation explanations (`explanation`) on hover
-- 🤖 **AI-Powered Test Smell Refactoring** — Refactor an entire test file or use Quick Fix (`Ctrl+.` / `Cmd+.`) on a specific smell diagnostic to preview AI-generated fixes in a side-by-side VS Code Diff Editor before applying
+- 🤖 **AI-Powered Test Smell Refactoring (Single & Batch)** — Refactor a single test file, use Quick Fix (`Ctrl+.` / `Cmd+.`) on a specific smell diagnostic, or run **Batch AI Refactoring** across folders and multiple files with bounded concurrency
 - 🔐 **Interactive AI Setup & Secret Storage** — Configure OpenAI, Google Gemini, Anthropic Claude, DeepSeek, or Moonshot Kimi via `SNUTS.js: Configure AI Provider`, storing API keys securely in VS Code `SecretStorage`
-- 📊 **Workspace Analysis & CSV/JSON Reports** — Run workspace-wide smell detection across all test files and export reports to `.csv` and/or `.json`
+- 📊 **Batch Analysis & CSV/JSON Reports** — Analyze selected files or folders in batch (via the Command Palette or right-clicking in the Explorer) to populate the Problems panel and optionally export `.csv` and/or `.json` reports
 - 📋 **Problems Panel Integration** — View all detected smells in VS Code's Problems panel
 - 📺 **Dedicated Output Channel** — Inspect detailed analysis runs, line/column ranges, smell explanations, and AI refactoring summaries in the **SNUTS.js** Output Channel
 - ⚡ **Manual Analysis** — Run analysis on demand via the Command Palette (`SNUTS.js: Analyze Current Test File`)
@@ -112,7 +112,8 @@ Configure the AI refactoring engine via the interactive command **`SNUTS.js: Con
 "snuts-js.ai.provider": "openai",
 "snuts-js.ai.model": "gpt-4.1-mini",
 "snuts-js.ai.temperature": 0.1,
-"snuts-js.ai.maxTokens": 1400
+"snuts-js.ai.maxTokens": 1400,
+"snuts-js.ai.concurrency": 3
 ```
 
 Supported providers and default models:
@@ -127,7 +128,9 @@ Supported providers and default models:
 | Command | Description |
 | --- | --- |
 | `SNUTS.js: Analyze Current Test File` | Manually trigger analysis of the active test file |
+| `SNUTS.js: Analyze in Batch` | Analyze selected files/folders (via Explorer context menu or multi-select QuickPick) and populate the Problems panel |
 | `SNUTS.js: Refactor Current Test File` | Generate an AI refactoring patch for the active test file and preview it in a Diff Editor |
+| `SNUTS.js: Refactor in Batch` | Run AI refactoring across multiple test files or folders with bounded concurrency and review modified files before applying |
 | `SNUTS.js: Configure AI Provider` | Interactive wizard to select the AI provider, model, and securely save the API key |
 | `SNUTS.js: Analyze Workspace & Export Report` | Analyze all workspace test files, populate the Problems panel, and export a CSV and/or JSON report |
 

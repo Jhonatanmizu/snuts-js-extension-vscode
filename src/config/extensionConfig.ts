@@ -6,6 +6,7 @@ export interface ExtensionAIConfig {
   model: string;
   temperature: number;
   maxTokens: number;
+  concurrency: number;
 }
 
 export interface ExtensionConfig {
@@ -20,6 +21,7 @@ const DEFAULT_DEBOUNCE_MS = 300;
 const DEFAULT_AI_PROVIDER: AIProviderName = "openai";
 const DEFAULT_AI_TEMPERATURE = 0.1;
 const DEFAULT_AI_MAX_TOKENS = 1400;
+const DEFAULT_AI_CONCURRENCY = 3;
 
 export const DEFAULT_AI_MODELS: Readonly<Record<AIProviderName, string>> = {
   openai: "gpt-4.1-mini",
@@ -103,6 +105,14 @@ function normalizeMaxTokens(value: number | undefined): number {
   return Math.trunc(value);
 }
 
+function normalizeConcurrency(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value) || value < 1) {
+    return DEFAULT_AI_CONCURRENCY;
+  }
+
+  return Math.min(10, Math.trunc(value));
+}
+
 export function getExtensionConfig(): ExtensionConfig {
   const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
   const provider = normalizeProvider(
@@ -128,6 +138,9 @@ export function getExtensionConfig(): ExtensionConfig {
       ),
       maxTokens: normalizeMaxTokens(
         config.get<number>("ai.maxTokens", DEFAULT_AI_MAX_TOKENS),
+      ),
+      concurrency: normalizeConcurrency(
+        config.get<number>("ai.concurrency", DEFAULT_AI_CONCURRENCY),
       ),
     },
   };

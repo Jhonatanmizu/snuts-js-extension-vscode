@@ -15,6 +15,7 @@ import {
 	RefactorCodeActionProvider,
 } from '../providers/refactorCodeActionProvider.js';
 import { generateReportContent } from '../reporter/workspaceReportController.js';
+import { dedupeAndSortFilePaths } from '../utils/batchTargetResolver.js';
 import { formatSmellLogLines } from '../utils/outputChannel.js';
 import { isTestFile } from '../utils/testFileMatcher.js';
 
@@ -208,5 +209,18 @@ suite('Extension Test Suite', () => {
 
 		assert.ok(csv.includes('Smell Type,File Path,Start Line,End Line,Message,Description'));
 		assert.ok(json.includes('"smellType": "Anonymous Test"'));
+	});
+
+	test('Deduplicates and sorts batch target file paths consistently', () => {
+		const normalized = dedupeAndSortFilePaths([
+			'/tmp/smell/b.test.ts',
+			'/tmp/smell/a.test.ts',
+			'/tmp/smell/b.test.ts',
+		]);
+
+		assert.deepStrictEqual(normalized, [
+			path.resolve('/tmp/smell/a.test.ts'),
+			path.resolve('/tmp/smell/b.test.ts'),
+		]);
 	});
 });

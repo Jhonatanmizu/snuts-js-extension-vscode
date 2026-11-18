@@ -37,6 +37,8 @@
     "onCommand:snuts-js.analyzeCurrentFile",
     "onCommand:snuts-js.configureAI",
     "onCommand:snuts-js.refactorCurrentFile",
+    "onCommand:snuts-js.analyzeBatch",
+    "onCommand:snuts-js.refactorBatch",
     "onCommand:snuts-js.analyzeWorkspaceAndExportReport"
   ],
   "main": "./dist/extension.cjs",
@@ -47,8 +49,16 @@
         "title": "SNUTS.js: Analyze Current Test File"
       },
       {
+        "command": "snuts-js.analyzeBatch",
+        "title": "SNUTS.js: Analyze in Batch"
+      },
+      {
         "command": "snuts-js.refactorCurrentFile",
         "title": "SNUTS.js: Refactor Current Test File"
+      },
+      {
+        "command": "snuts-js.refactorBatch",
+        "title": "SNUTS.js: Refactor in Batch"
       },
       {
         "command": "snuts-js.configureAI",
@@ -59,6 +69,18 @@
         "title": "SNUTS.js: Analyze Workspace & Export Report"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "snuts-js.analyzeBatch",
+          "group": "snuts-js@1"
+        },
+        {
+          "command": "snuts-js.refactorBatch",
+          "group": "snuts-js@2"
+        }
+      ]
+    },
     "configuration": {
       "title": "SNUTS.js",
       "properties": {
@@ -123,6 +145,13 @@
           "default": 1400,
           "minimum": 1,
           "description": "Maximum output tokens for AI refactoring generation."
+        },
+        "snuts-js.ai.concurrency": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum number of test files to refactor concurrently during batch AI refactoring."
         }
       }
     }
