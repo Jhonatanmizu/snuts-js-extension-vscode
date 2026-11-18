@@ -78,6 +78,16 @@ export class DiagnosticsController implements vscode.Disposable {
     return { diagnosticsCount: diagnostics.length, smells };
   }
 
+  public async publishFileSmells(
+    uri: vscode.Uri,
+    smells: readonly TestSmell[],
+  ): Promise<number> {
+    const document = await vscode.workspace.openTextDocument(uri);
+    const diagnostics = mapSmellsToDiagnostics([...smells], document);
+    this.diagnostics.set(uri, diagnostics);
+    return diagnostics.length;
+  }
+
   public dispose(): void {
     for (const timer of this.pendingRuns.values()) {
       clearTimeout(timer);

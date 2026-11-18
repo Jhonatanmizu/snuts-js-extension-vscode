@@ -2,7 +2,7 @@
   "name": "snuts-js",
   "displayName": "SNUTS.js",
   "description": "Detects test smells in JavaScript and TypeScript tests using @snutsjs/core and publishes diagnostics in VS Code.",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "publisher": "Jhonatanmizu",
   "license": "GPL-3.0",
   "icon": "images/logo.png",
@@ -34,7 +34,10 @@
     "onLanguage:javascriptreact",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
-    "onCommand:snuts-js.analyzeCurrentFile"
+    "onCommand:snuts-js.analyzeCurrentFile",
+    "onCommand:snuts-js.configureAI",
+    "onCommand:snuts-js.refactorCurrentFile",
+    "onCommand:snuts-js.analyzeWorkspaceAndExportReport"
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
@@ -42,6 +45,18 @@
       {
         "command": "snuts-js.analyzeCurrentFile",
         "title": "SNUTS.js: Analyze Current Test File"
+      },
+      {
+        "command": "snuts-js.refactorCurrentFile",
+        "title": "SNUTS.js: Refactor Current Test File"
+      },
+      {
+        "command": "snuts-js.configureAI",
+        "title": "SNUTS.js: Configure AI Provider"
+      },
+      {
+        "command": "snuts-js.analyzeWorkspaceAndExportReport",
+        "title": "SNUTS.js: Analyze Workspace & Export Report"
       }
     ],
     "configuration": {
@@ -78,6 +93,36 @@
           "items": {
             "type": "string"
           }
+        },
+        "snuts-js.ai.provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "google",
+            "anthropic",
+            "deepseek",
+            "kimi"
+          ],
+          "default": "openai",
+          "description": "AI provider used by SNUTS.js for test smell refactoring."
+        },
+        "snuts-js.ai.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model identifier for the selected AI provider (leave blank to use the provider default)."
+        },
+        "snuts-js.ai.temperature": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Sampling temperature (0 to 2) for AI refactoring generation."
+        },
+        "snuts-js.ai.maxTokens": {
+          "type": "number",
+          "default": 1400,
+          "minimum": 1,
+          "description": "Maximum output tokens for AI refactoring generation."
         }
       }
     }
@@ -115,6 +160,6 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
-    "@snutsjs/core": "^1.2.3"
+    "@snutsjs/core": "^1.3.0"
   }
 }

@@ -19,10 +19,13 @@ Let SNUTS.js help you maintain clean, maintainable test suites.
 
 - ✨ **Real-time Detection** — Analyzes test files on open, edit, and save (with configurable debounce)
 - 🎯 **In-Editor Diagnostics & Explanations** — See issues directly in your code with category codes (`description`) and actionable remediation explanations (`explanation`) on hover
+- 🤖 **AI-Powered Test Smell Refactoring** — Refactor an entire test file or use Quick Fix (`Ctrl+.` / `Cmd+.`) on a specific smell diagnostic to preview AI-generated fixes in a side-by-side VS Code Diff Editor before applying
+- 🔐 **Interactive AI Setup & Secret Storage** — Configure OpenAI, Google Gemini, Anthropic Claude, DeepSeek, or Moonshot Kimi via `SNUTS.js: Configure AI Provider`, storing API keys securely in VS Code `SecretStorage`
+- 📊 **Workspace Analysis & CSV/JSON Reports** — Run workspace-wide smell detection across all test files and export reports to `.csv` and/or `.json`
 - 📋 **Problems Panel Integration** — View all detected smells in VS Code's Problems panel
-- 📺 **Dedicated Output Channel** — Inspect detailed analysis runs, line/column ranges, and smell explanations in the **SNUTS.js** Output Channel
+- 📺 **Dedicated Output Channel** — Inspect detailed analysis runs, line/column ranges, smell explanations, and AI refactoring summaries in the **SNUTS.js** Output Channel
 - ⚡ **Manual Analysis** — Run analysis on demand via the Command Palette (`SNUTS.js: Analyze Current Test File`)
-- 🎛️ **Fully Configurable** — Customize file patterns and detection debounce
+- 🎛️ **Fully Configurable** — Customize file patterns, detection debounce, and AI model parameters
 - 🔄 **Auto-Discovery** — Automatically detects new detectors exported by `@snutsjs/core` (`createDetectorInstances` / `detectors` registry)
 
 ## Supported Test Smells (15 Built-in Detectors)
@@ -101,11 +104,32 @@ If not configured, SNUTS.js analyzes files matching:
 - `**/__tests__/**/*.ts` / `**/__tests__/**/*.tsx`
 - `**/__tests__/**/*.js` / `**/__tests__/**/*.jsx`
 
+### AI Refactoring Configuration
+
+Configure the AI refactoring engine via the interactive command **`SNUTS.js: Configure AI Provider`** (which stores your API key securely in VS Code `SecretStorage`) or adjust model parameters in `settings.json`:
+
+```json
+"snuts-js.ai.provider": "openai",
+"snuts-js.ai.model": "gpt-4.1-mini",
+"snuts-js.ai.temperature": 0.1,
+"snuts-js.ai.maxTokens": 1400
+```
+
+Supported providers and default models:
+- `openai` (`gpt-4.1-mini`, fallback env: `OPENAI_API_KEY`)
+- `google` (`gemini-2.0-flash`, fallback env: `GOOGLE_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`)
+- `anthropic` (`claude-3-5-sonnet-latest`, fallback env: `ANTHROPIC_API_KEY`)
+- `deepseek` (`deepseek-chat`, fallback env: `DEEPSEEK_API_KEY`)
+- `kimi` (`moonshot-v1-8k`, fallback env: `KIMI_API_KEY` / `MOONSHOT_API_KEY`)
+
 ## Commands
 
 | Command | Description |
 | --- | --- |
 | `SNUTS.js: Analyze Current Test File` | Manually trigger analysis of the active test file |
+| `SNUTS.js: Refactor Current Test File` | Generate an AI refactoring patch for the active test file and preview it in a Diff Editor |
+| `SNUTS.js: Configure AI Provider` | Interactive wizard to select the AI provider, model, and securely save the API key |
+| `SNUTS.js: Analyze Workspace & Export Report` | Analyze all workspace test files, populate the Problems panel, and export a CSV and/or JSON report |
 
 ## Requirements
 
@@ -146,8 +170,3 @@ SNUTS.js uses [`@snutsjs/core`](https://github.com/snutsjs/core) for its detecti
 ## License
 
 This extension is distributed under **GPL-3.0** to remain compatible with [`@snutsjs/core`](https://github.com/snutsjs/core).
-
-## Known Limitations
-
-- **No automatic fixes** — Currently diagnostics only (fixes coming in future releases)
-- **File-level analysis** — Analysis runs per file, not across test suites

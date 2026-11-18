@@ -1,14 +1,37 @@
+import { setLogger } from "@snutsjs/core";
 import * as vscode from "vscode";
+import { AIConfigManager } from "./ai/aiConfigManager.js";
+import { RefactorController } from "./ai/refactorController.js";
+import {
+  REFACTOR_PREVIEW_SCHEME,
+  RefactorDiffContentProvider,
+} from "./ai/refactorDiffProvider.js";
 import { TestSmellAnalyzer } from "./analyzer/testSmellAnalyzer.js";
 import { DiagnosticsController } from "./providers/diagnosticsController.js";
+import {
+  REFACTOR_CURRENT_FILE_COMMAND,
+  RefactorCodeActionProvider,
+} from "./providers/refactorCodeActionProvider.js";
+import { WorkspaceReportController } from "./reporter/workspaceReportController.js";
 import { createOutputChannelLogger } from "./utils/coreLogger.js";
-import { formatSmellLogLines, getOutputChannel } from "./utils/outputChannel.js";
+import {
+  formatSmellLogLines,
+  getOutputChannel,
+} from "./utils/outputChannel.js";
+
+const SUPPORTED_CODE_ACTION_LANGUAGES: readonly vscode.DocumentFilter[] = [
+  { scheme: "file", language: "javascript" },
+  { scheme: "file", language: "javascriptreact" },
+  { scheme: "file", language: "typescript" },
+  { scheme: "file", language: "typescriptreact" },
+];
 
 export function activate(context: vscode.ExtensionContext): void {
   // Replace @snutsjs/core's default pino logger before detector instantiation
   // so stray stdout writes cannot corrupt the VS Code extension host transport.
   const outputChannel = getOutputChannel();
   const coreLogger = createOutputChannelLogger(outputChannel);
+  setLogger(coreLogger);
 
   outputChannel.appendLine(
     `[${new Date().toISOString()}] Activating SNUTS.js extension...`,
@@ -17,9 +40,37 @@ export function activate(context: vscode.ExtensionContext): void {
   try {
     const analyzer = new TestSmellAnalyzer(undefined, coreLogger);
     const diagnosticsController = new DiagnosticsController(analyzer);
+    const aiConfigManager = new AIConfigManager(context.secrets);
+    const diffProvider = new RefactorDiffContentProvider();
+    const refactorController = new RefactorController(
+      aiConfigManager,
+      diffProvider,
+    );
+    const workspaceReportController = new WorkspaceReportController(
+      diagnosticsController,
+    );
 
     context.subscriptions.push(diagnosticsController);
+    context.subscriptions.push(diffProvider);
     context.subscriptions.push(outputChannel);
+
+    context.subscriptions.push(
+      vscode.workspace.registerTextDocumentContentProvider(
+        REFACTOR_PREVIEW_SCHEME,
+        diffProvider,
+      ),
+    );
+
+    context.subscriptions.push(
+      vscode.languages.registerCodeActionsProvider(
+        SUPPORTED_CODE_ACTION_LANGUAGES,
+        new RefactorCodeActionProvider(),
+        {
+          providedCodeActionKinds:
+            RefactorCodeActionProvider.providedCodeActionKinds,
+        },
+      ),
+    );
 
     context.subscriptions.push(
       vscode.workspace.onDidOpenTextDocument((document) => {
@@ -64,7 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
       async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-          vscode.window.showInformationMessage(
+          void vscode.window.showInformationMessage(
             "Open a test file to run SNUTS.js analysis.",
           );
           return;
@@ -102,7 +153,7 @@ export function activate(context: vscode.ExtensionContext): void {
             outputChannel.appendLine(
               `[${new Date().toISOString()}] Manual analysis completed for ${targetPath}: no smells found`,
             );
-            vscode.window.showInformationMessage(
+            void vscode.window.showInformationMessage(
               "No test smells found in the current file.",
             );
             return;
@@ -118,7 +169,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           }
 
-          vscode.window.showWarningMessage(
+          void vscode.window.showWarningMessage(
             `SNUTS.js found ${result.diagnosticsCount} potential test smell(s).`,
           );
         } catch (error) {
@@ -144,7 +195,50 @@ export function activate(context: vscode.ExtensionContext): void {
       },
     );
 
-    context.subscriptions.push(analyzeCurrentFileCommand);
+    const configureAICommand = vscode.commands.registerCommand(
+      "snuts-js.configureAI",
+      async () => {
+        await aiConfigManager.configureInteractively();
+      },
+    );
+
+    const refactorCurrentFileCommand = vscode.commands.registerCommand(
+      REFACTOR_CURRENT_FILE_COMMAND,
+      async (targetUri?: vscode.Uri, smellDescriptionFilter?: string) => {
+        const applied = await refactorController.refactorDocument(
+          targetUri,
+          smellDescriptionFilter,
+        );
+        if (applied) {
+          const doc =
+            (targetUri
+              ? vscode.workspace.textDocuments.find(
+                  (item) => item.uri.toString() === targetUri.toString(),
+                )
+              : undefined) ?? vscode.window.activeTextEditor?.document;
+
+          if (doc) {
+            await doc.save();
+            await diagnosticsController.analyzeNow(doc, true);
+          }
+        }
+      },
+    );
+
+    const analyzeWorkspaceCommand = vscode.commands.registerCommand(
+      "snuts-js.analyzeWorkspaceAndExportReport",
+      async () => {
+        await workspaceReportController.analyzeWorkspaceAndExportReport();
+      },
+    );
+
+    context.subscriptions.push(
+      analyzeCurrentFileCommand,
+      configureAICommand,
+      refactorCurrentFileCommand,
+      analyzeWorkspaceCommand,
+    );
+
     outputChannel.appendLine(
       `[${new Date().toISOString()}] SNUTS.js extension activated.`,
     );

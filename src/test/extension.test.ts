@@ -1,10 +1,20 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { AIConfigManager, buildSecretKey } from '../ai/aiConfigManager.js';
+import {
+	createPreviewUri,
+	RefactorDiffContentProvider,
+} from '../ai/refactorDiffProvider.js';
 import { mapSmellsToDiagnostics } from '../analyzer/smellToDiagnosticMapper.js';
 import { TestSmellAnalyzer } from '../analyzer/testSmellAnalyzer.js';
 import { type TestSmell } from '../analyzer/types.js';
 import { DiagnosticsController } from '../providers/diagnosticsController.js';
+import {
+	REFACTOR_CURRENT_FILE_COMMAND,
+	RefactorCodeActionProvider,
+} from '../providers/refactorCodeActionProvider.js';
+import { generateReportContent } from '../reporter/workspaceReportController.js';
 import { formatSmellLogLines } from '../utils/outputChannel.js';
 import { isTestFile } from '../utils/testFileMatcher.js';
 
@@ -126,5 +136,77 @@ suite('Extension Test Suite', () => {
 		} finally {
 			controller.dispose();
 		}
+	});
+
+	test('Stores and resolves AI configuration from SecretStorage', async () => {
+		const store = new Map<string, string>();
+		const secretStorage = {
+			get: async (key: string) => store.get(key),
+			store: async (key: string, value: string) => {
+				store.set(key, value);
+			},
+			delete: async (key: string) => {
+				store.delete(key);
+			},
+		};
+
+		const manager = new AIConfigManager(secretStorage);
+		await manager.storeApiKey('openai', 'sk-test-12345');
+
+		assert.strictEqual(store.get(buildSecretKey('openai')), 'sk-test-12345');
+		const resolved = await manager.resolve(false);
+		assert.strictEqual(resolved?.apiKey, 'sk-test-12345');
+	});
+
+	test('Provides virtual preview content for refactoring diffs', () => {
+		const provider = new RefactorDiffContentProvider();
+		const previewUri = createPreviewUri(vscode.Uri.file('/tmp/sample.test.ts'));
+
+		provider.setPreviewContent(previewUri, 'updated test content');
+		assert.strictEqual(provider.provideTextDocumentContent(previewUri), 'updated test content');
+
+		provider.deletePreviewContent(previewUri);
+		assert.strictEqual(provider.provideTextDocumentContent(previewUri), '');
+		provider.dispose();
+	});
+
+	test('Creates targeted and file-wide AI refactor QuickFix code actions', async () => {
+		const document = await vscode.workspace.openTextDocument({
+			language: 'typescript',
+			content: 'it("", () => {});\n',
+		});
+		const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 10));
+		const diagnostic = new vscode.Diagnostic(range, 'Anonymous test', vscode.DiagnosticSeverity.Warning);
+		diagnostic.source = 'SNUTS.js';
+		diagnostic.code = 'Anonymous Test';
+
+		const provider = new RefactorCodeActionProvider();
+		const actions = provider.provideCodeActions(document, range, {
+			diagnostics: [diagnostic],
+			only: undefined,
+			triggerKind: vscode.CodeActionTriggerKind.Invoke,
+		});
+
+		assert.strictEqual(actions.length, 2);
+		assert.strictEqual(actions[0].command?.command, REFACTOR_CURRENT_FILE_COMMAND);
+		assert.deepStrictEqual(actions[0].command?.arguments, [document.uri, 'Anonymous Test']);
+	});
+
+	test('Generates CSV and JSON report content from detected smells', () => {
+		const smells = [{
+			file: '/tmp/sample.test.ts',
+			start: { line: 2, column: 1 },
+			end: { line: 4, column: 2 },
+			message: 'Anonymous Test',
+			codeBlock: 'it("", () => {});',
+			description: 'Test title is too short',
+			explanation: 'Use a descriptive title',
+		}];
+
+		const csv = generateReportContent(smells, 'csv');
+		const json = generateReportContent(smells, 'json');
+
+		assert.ok(csv.includes('Smell Type,File Path,Start Line,End Line,Message,Description'));
+		assert.ok(json.includes('"smellType": "Anonymous Test"'));
 	});
 });
