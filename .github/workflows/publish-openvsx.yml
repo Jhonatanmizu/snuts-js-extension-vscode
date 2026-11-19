@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: publish-openvsx-${{ github.ref }}
@@ -65,11 +66,4 @@ jobs:
           retention-days: 14
 
       - name: Publish to Open VSX
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: |
-          if [ -z "$OVSX_PAT" ]; then
-            echo "Error: OVSX_PAT secret is not configured." >&2
-            exit 1
-          fi
-          npx --yes ovsx publish "${{ steps.package.outputs.vsix }}"
+        run: npx --yes ovsx publish "${{ steps.package.outputs.vsix }}" --trusted-publishing
