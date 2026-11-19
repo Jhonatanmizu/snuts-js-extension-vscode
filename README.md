@@ -124,6 +124,7 @@ Configure the AI refactoring engine via the interactive command **`SNUTS.js: Con
 ```json
 "snuts-js.ai.provider": "openai",
 "snuts-js.ai.model": "gpt-4.1-mini",
+"snuts-js.ai.apiKey": "",
 "snuts-js.ai.temperature": 0.1,
 "snuts-js.ai.maxTokens": 1400,
 "snuts-js.ai.concurrency": 3
@@ -149,7 +150,7 @@ Supported providers and default models:
 
 ## Requirements
 
-- **VS Code**: `^1.110.0`
+- **VS Code**: `^1.85.0`
 - **Node.js**: `>=18`
 - **Test Files**: JavaScript or TypeScript files matching configured patterns
 

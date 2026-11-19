@@ -88,7 +88,7 @@ export class AIConfigManager {
     promptIfMissing = true,
   ): Promise<ResolvedAIConfig | undefined> {
     const { ai } = getExtensionConfig();
-    const storedApiKey = await this.getStoredApiKey(ai.provider);
+    const storedApiKey = (await this.getStoredApiKey(ai.provider)) ?? ai.apiKey;
 
     try {
       return resolveAIConfig({
@@ -152,12 +152,14 @@ export class AIConfigManager {
     }
 
     const model = modelInput.trim() || DEFAULT_AI_MODELS[provider];
-    const existingKey = await this.getStoredApiKey(provider);
+    const existingKey =
+      (await this.getStoredApiKey(provider)) ??
+      (provider === currentConfig.provider ? currentConfig.apiKey : undefined);
 
     const apiKeyInput = await vscode.window.showInputBox({
       title: "SNUTS.js: Configure AI API Key (3/3)",
       prompt: existingKey
-        ? `Enter a new API key for ${pickedProvider.label} (or leave blank to keep existing stored key)`
+        ? `Enter a new API key for ${pickedProvider.label} (or leave blank to keep existing key)`
         : `Enter API key for ${pickedProvider.label} (stored securely in VS Code SecretStorage)`,
       password: true,
       placeHolder: existingKey ? "••••••••••••••••" : "sk-...",
@@ -183,12 +185,8 @@ export class AIConfigManager {
     await this.storeApiKey(provider, finalApiKey);
 
     const vsConfig = vscode.workspace.getConfiguration(CONFIG_SECTION);
-    await vsConfig.update(
-      "ai.provider",
-      provider,
-      vscode.ConfigurationTarget.Global,
-    );
-    await vsConfig.update("ai.model", model, vscode.ConfigurationTarget.Global);
+    await this.updateConfigSetting(vsConfig, "ai.provider", provider);
+    await this.updateConfigSetting(vsConfig, "ai.model", model);
 
     this.outputChannel.appendLine(
       `[${new Date().toISOString()}] Configured AI provider="${provider}", model="${model}" (API key saved to SecretStorage).`,
@@ -206,5 +204,24 @@ export class AIConfigManager {
       temperature: updatedAiConfig.temperature,
       maxTokens: updatedAiConfig.maxTokens,
     });
+  }
+
+  private async updateConfigSetting<T>(
+    vsConfig: vscode.WorkspaceConfiguration,
+    key: string,
+    value: T,
+  ): Promise<void> {
+    await vsConfig.update(key, value, vscode.ConfigurationTarget.Global);
+    const inspected = vsConfig.inspect<T>(key);
+    if (inspected?.workspaceValue !== undefined) {
+      await vsConfig.update(key, value, vscode.ConfigurationTarget.Workspace);
+    }
+    if (inspected?.workspaceFolderValue !== undefined) {
+      await vsConfig.update(
+        key,
+        value,
+        vscode.ConfigurationTarget.WorkspaceFolder,
+      );
+    }
   }
 }

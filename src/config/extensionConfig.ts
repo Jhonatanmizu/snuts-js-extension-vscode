@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 export interface ExtensionAIConfig {
   provider: AIProviderName;
   model: string;
+  apiKey?: string;
   temperature: number;
   maxTokens: number;
   concurrency: number;
@@ -121,6 +122,7 @@ export function getExtensionConfig(): ExtensionConfig {
   const configuredModel = config.get<string>("ai.model", "").trim();
   const model =
     configuredModel.length > 0 ? configuredModel : DEFAULT_AI_MODELS[provider];
+  const configuredApiKey = config.get<string>("ai.apiKey", "").trim();
 
   return {
     enabled: config.get<boolean>("enabled", true),
@@ -133,6 +135,7 @@ export function getExtensionConfig(): ExtensionConfig {
     ai: {
       provider,
       model,
+      apiKey: configuredApiKey.length > 0 ? configuredApiKey : undefined,
       temperature: normalizeTemperature(
         config.get<number>("ai.temperature", DEFAULT_AI_TEMPERATURE),
       ),
