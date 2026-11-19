@@ -1,0 +1,75 @@
+name: Publish to Open VSX
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-openvsx-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and Publish to Open VSX
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Verify tag matches package.json version
+        if: github.ref_type == 'tag'
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)." >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck
+        run: yarn check-types
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Package VSIX
+        id: package
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          VSIX_FILE="${PKG_NAME}-${PKG_VERSION}.vsix"
+          yarn vsix
+          test -f "$VSIX_FILE"
+          echo "vsix=${VSIX_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.vsix }}
+          path: ${{ steps.package.outputs.vsix }}
+          retention-days: 14
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "Error: OVSX_PAT secret is not configured." >&2
+            exit 1
+          fi
+          npx --yes ovsx publish "${{ steps.package.outputs.vsix }}"
