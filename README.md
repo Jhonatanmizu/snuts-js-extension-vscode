@@ -28,25 +28,38 @@ Let SNUTS.js help you maintain clean, maintainable test suites.
 - 🎛️ **Fully Configurable** — Customize file patterns, detection debounce, and AI model parameters
 - 🔄 **Auto-Discovery** — Automatically detects new detectors exported by `@snutsjs/core` (`createDetectorInstances` / `detectors` registry)
 
-## Supported Test Smells (15 Built-in Detectors)
+## Supported Test Smells (28 Built-in Detectors)
 
-Powered by `@snutsjs/core`, the extension detects 15 test smells out of the box:
+Powered by `@snutsjs/core`, the extension detects 28 test smells out of the box (covering both SNUTS.js and JNose catalogs):
 
 | Smell Category (`code`)  | Detector Class                          | What It Detects                                                                                      |
 | ------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Anonymous Test           | `AnonymousTestLogicDetector`            | Test descriptions that are too short (at most 2 words after trimming).                               |
+| Assertion Roulette       | `AssertionRouletteDetector`             | Multiple assertions in a single test case where assertions omit explanatory failure messages.        |
 | Comments-Only Test       | `CommentsOnlyLogicTestDetector`         | `it` / `test` bodies that are empty or contain only comments.                                        |
 | Complex Snapshot         | `ComplexSnapshotTestLogicDetector`      | Snapshot matchers (`toMatchSnapshot`, `toMatchInlineSnapshot`) with templates exceeding 50 lines.    |
-| Conditional Test Logic   | `ConditionalTestLogicDetector`          | Branching (`if`, `switch`, loops) inside a test body instead of separate test cases.                 |
+| Conditional Test Logic   | `ConditionalTestLogicDetector`          | Branching and loops (`if`, `switch`, `for`, `while`, `do..while`, ternaries) inside a test body.     |
+| Dependent Test           | `DependentTestDetector`                 | Tests reading shared mutable state written by a prior test without being reset in `beforeEach`.      |
+| Duplicate Assert         | `DuplicateAssertDetector`               | Identical assertion statements repeated within the same test case.                                   |
+| Eager Test               | `EagerTestDetector`                     | A single test invoking multiple distinct methods on the same System Under Test (SUT) instance.       |
+| Exception Handling       | `ExceptionHandlingDetector`             | Manual `try/catch` or `throw` statements inside test cases instead of framework matchers.            |
 | General Fixture          | `GeneralFixtureTestLogicDetector`       | Variables initialized in `beforeAll` / `beforeEach` that are not used across all tests in the suite. |
 | Identical Description    | `IdenticalDescriptionTestLogicDetector` | Duplicate `it` / `test` descriptions within the same file.                                           |
+| Ignored Test             | `IgnoredTestDetector`                   | Skipped or placeholder tests (`it.skip`, `test.skip`, `describe.skip`, `xit`, `xtest`, `it.todo`).   |
+| Lazy Test                | `LazyTestDetector`                      | Multiple test cases in the same suite invoking the exact same single method on the SUT.              |
+| Magic Number Test        | `MagicNumberTestDetector`               | Unexplained raw numeric literals (excluding `0`, `1`, `-1`) used directly in assertion matchers.     |
+| Mystery Guest            | `MysteryGuestDetector`                  | Direct access to external resources (`fs`, `fetch`, `axios`, `http`, `localStorage`, etc.).          |
 | Overcommented Test       | `OvercommentedTestLogicDetector`        | Test cases with more than 5 distinct comment anchors.                                                |
+| Redundant Assertion      | `RedundantAssertionDetector`            | Tautological assertions comparing identical literals or identifiers (e.g. `expect(true).toBe(true)`).|
+| Resource Optimism        | `ResourceOptimismDetector`              | File system operations (`fs.readFileSync`, etc.) in a test without a preceding existence check.      |
+| Sleepy Test              | `SleepyTestDetector`                    | Explicit timer delays (`setTimeout`, `setInterval`, `sleep(ms)`) inside test cases.                  |
 | Test Without Description | `DetectorTestWithoutDescriptionLogic`   | `it()` / `test()` calls missing a leading string literal description.                                |
 | Non-Functional Statement | `NonFunctionalStatementDetector`        | Effectively empty blocks with no executable statements or comments.                                  |
 | Focused / Isolated Test  | `OnlyTestDetector`                      | Leftover `.only` calls on `it`, `test`, or `describe`.                                               |
 | Sensitive Equality       | `SensitiveEqualityDetector`             | Assertions relying on brittle `.toString()` string coercion.                                         |
 | Suboptimal Assertion     | `SubOptimalAssertDetector`              | Assertions that obscure intent compared to idiomatic matchers.                                       |
 | Transcripting Test       | `TranscriptingTestDetector`             | `console.log`, `console.error`, `console.warn`, or `console.info` calls inside tests.                |
+| Unknown Test             | `UnknownTestDetector`                   | Non-empty test cases that execute code without making any assertions.                                |
 | Verbose Test             | `VerboseTestDetector`                   | Test blocks exceeding 13 statements, indicating multiple scenarios packed into a single test.        |
 | Assertion in Setup       | `VerifyInSetupDetector`                 | Assertions (`expect` / `assert`) placed inside lifecycle hooks (`beforeAll`, `beforeEach`, `after*`).|
 

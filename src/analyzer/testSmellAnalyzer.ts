@@ -24,36 +24,62 @@ type SnutsCoreModule = {
     silentLogger?: ILogger;
   };
   AnonymousTestLogicDetector?: DetectorConstructor;
+  AssertionRouletteDetector?: DetectorConstructor;
   CommentsOnlyLogicTestDetector?: DetectorConstructor;
   ComplexSnapshotTestLogicDetector?: DetectorConstructor;
   ConditionalTestLogicDetector?: DetectorConstructor;
+  DependentTestDetector?: DetectorConstructor;
   DetectorTestWithoutDescriptionLogic?: DetectorConstructor;
+  DuplicateAssertDetector?: DetectorConstructor;
+  EagerTestDetector?: DetectorConstructor;
+  ExceptionHandlingDetector?: DetectorConstructor;
   GeneralFixtureTestLogicDetector?: DetectorConstructor;
   IdenticalDescriptionTestLogicDetector?: DetectorConstructor;
+  IgnoredTestDetector?: DetectorConstructor;
+  LazyTestDetector?: DetectorConstructor;
+  MagicNumberTestDetector?: DetectorConstructor;
+  MysteryGuestDetector?: DetectorConstructor;
   NonFunctionalStatementDetector?: DetectorConstructor;
   OnlyTestDetector?: DetectorConstructor;
   OvercommentedTestLogicDetector?: DetectorConstructor;
+  RedundantAssertionDetector?: DetectorConstructor;
+  ResourceOptimismDetector?: DetectorConstructor;
   SensitiveEqualityDetector?: DetectorConstructor;
+  SleepyTestDetector?: DetectorConstructor;
   SubOptimalAssertDetector?: DetectorConstructor;
   TranscriptingTestDetector?: DetectorConstructor;
+  UnknownTestDetector?: DetectorConstructor;
   VerboseTestDetector?: DetectorConstructor;
   VerifyInSetupDetector?: DetectorConstructor;
 };
 
 const FALLBACK_DETECTOR_NAMES: readonly (keyof SnutsCoreModule)[] = [
   "AnonymousTestLogicDetector",
+  "AssertionRouletteDetector",
   "CommentsOnlyLogicTestDetector",
   "ComplexSnapshotTestLogicDetector",
   "ConditionalTestLogicDetector",
+  "DependentTestDetector",
   "DetectorTestWithoutDescriptionLogic",
+  "DuplicateAssertDetector",
+  "EagerTestDetector",
+  "ExceptionHandlingDetector",
   "GeneralFixtureTestLogicDetector",
   "IdenticalDescriptionTestLogicDetector",
+  "IgnoredTestDetector",
+  "LazyTestDetector",
+  "MagicNumberTestDetector",
+  "MysteryGuestDetector",
   "NonFunctionalStatementDetector",
   "OnlyTestDetector",
   "OvercommentedTestLogicDetector",
+  "RedundantAssertionDetector",
+  "ResourceOptimismDetector",
   "SensitiveEqualityDetector",
+  "SleepyTestDetector",
   "SubOptimalAssertDetector",
   "TranscriptingTestDetector",
+  "UnknownTestDetector",
   "VerboseTestDetector",
   "VerifyInSetupDetector",
 ];
