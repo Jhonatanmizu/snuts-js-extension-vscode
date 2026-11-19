@@ -37,3 +37,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Add workspace-wide smell analysis and CSV/JSON report export (`SNUTS.js: Analyze Workspace & Export Report`).
 - Add `.jsx` and `.tsx` React test file include patterns.
 - Standardize test smell diagnostics as warnings and remove custom `snuts-js.severity` configuration.
+
+## [0.1.1] - 2026-11-19
+
+- Add optional `snuts-js.ai.apiKey` setting and lower minimum VS Code engine requirement to `^1.85.0`.
+- Document all 28 built-in test smell detectors.
+
+## [0.1.2] - 2026-11-19
+
+- Update `@snutsjs/core` to `^1.4.0` to bundle all 28 built-in test smell detectors and markdown-fenced JSON patch parsing for AI refactoring.

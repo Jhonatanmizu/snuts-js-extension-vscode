@@ -72,14 +72,20 @@ Powered by `@snutsjs/core`, the extension detects 28 test smells out of the box 
 
 ## Quick Start
 
-1. Open a TypeScript or JavaScript test file (any file matching `*.test.*` or `*.spec.*`)
-2. The extension automatically analyzes the file and highlights test smells
-3. Hover over highlighted issues to see descriptions
-4. Review the **Problems** panel for all detected issues
+### 1. Real-Time & Manual Detection
+1. Open a TypeScript or JavaScript test file (any file matching `*.test.*`, `*.spec.*`, or `__tests__/**`)
+2. The extension automatically analyzes the file and highlights test smells as warnings
+3. Hover over highlighted issues to inspect the smell category (`code`) and remediation explanation
+4. Review the **Problems** panel for all detected issues, or run **SNUTS.js: Analyze Current Test File** from the Command Palette
 
-You can also run analysis manually:
-- Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-- Run: **SNUTS.js: Analyze Current Test File**
+### 2. AI Setup & Test Smell Refactoring
+1. Run **SNUTS.js: Configure AI Provider** from the Command Palette to choose your provider (`openai`, `google`, `anthropic`, `deepseek`, or `kimi`), model, and save your API key in VS Code `SecretStorage` (or set `"snuts-js.ai.apiKey"` in Settings)
+2. Click the Quick Fix lightbulb (`Ctrl+.` / `Cmd+.`) on any highlighted test smell diagnostic to refactor either that specific smell type or all smells in the file—or run **SNUTS.js: Refactor Current Test File**
+3. Review the proposed changes in the side-by-side **VS Code Diff Editor** (`Original ↔ SNUTS.js AI Refactor`) and click **Apply Refactoring**
+
+### 3. Batch Analysis, Batch AI Refactoring & Reports
+- **Explorer Context Menu**: Right-click any folder or selection of test files in the VS Code Explorer and select **SNUTS.js: Analyze in Batch** or **SNUTS.js: Refactor in Batch**
+- **Command Palette**: Run **SNUTS.js: Analyze in Batch**, **SNUTS.js: Refactor in Batch**, or **SNUTS.js: Analyze Workspace & Export Report** to analyze multiple files in parallel and export `.csv` and/or `.json` reports
 
 ## Configuration
 
