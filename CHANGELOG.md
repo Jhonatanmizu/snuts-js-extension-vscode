@@ -46,3 +46,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.1.2] - 2026-11-19
 
 - Update `@snutsjs/core` to `^1.4.0` to bundle all 28 built-in test smell detectors and markdown-fenced JSON patch parsing for AI refactoring.
+
+## [0.1.3] - 2026-11-19
+
+- Update logo to be centered and cropped.
